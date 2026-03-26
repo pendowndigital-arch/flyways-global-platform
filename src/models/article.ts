@@ -11,4 +11,4 @@ export interface Article {
 }
 
 export type DateFilter = 'all' | '1month' | '3months' | '6months';
-export type CategoryFilter = 'All' | 'Visa' | 'Regulation' | 'Scholarship' | 'Living';
+export type CategoryFilter = string;

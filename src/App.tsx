@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { HomePage } from './components/HomePage';
 import { ArticlesPage } from './pages/ArticlesPage';
@@ -6,21 +6,22 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
+import { fetchTags } from './services/tagsService';
+
+const router = createBrowserRouter([
+  { path: '/',            element: <HomePage /> },
+  { path: '/articles',    element: <ArticlesPage />, loader: () => fetchTags() },
+  { path: '/articles/:id',element: <ArticleDetailPage /> },
+  { path: '/profile',     element: <ProfilePage /> },
+  { path: '/contact',     element: <ContactPage /> },
+  { path: '/about',       element: <AboutPage /> },
+]);
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/articles" element={<ArticlesPage />} />
-          <Route path="/articles/:id" element={<ArticleDetailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/about" element={<AboutPage />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   );
 }
 

@@ -1,11 +1,161 @@
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useLoaderData } from 'react-router-dom';
+import { ArticleCard } from '../components/ArticleCard';
+import { mockArticles } from '../data/mockArticles';
+import { CategoryFilter, DateFilter } from '../models/article';
+import { Tag } from '../models/tag';
+import { Search, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
+import { RecommendedTags } from '../components/RecommendedTags';
+
+const PAGE_SIZE = 4;
 
 export function ArticlesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const tags = useLoaderData() as Tag[];
+
+  const categories: CategoryFilter[] = ['All', ...tags.map((t) => t.name)];
+
+  const selectedTag = searchParams.get('tag');
+
+  useEffect(() => {
+    setCategoryFilter(selectedTag ? (selectedTag as CategoryFilter) : 'All');
+  }, [selectedTag]);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, categoryFilter, dateFilter, selectedTag]);
+
+  const handleTagClick = (tag: string) => setSearchParams({ tag });
+  const handleClearTag = () => { setSearchParams({}); setCategoryFilter('All'); };
+
+  // Will be replaced with API data later — useMemo avoids re-filtering a large list on every render
+  const filteredArticles = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return mockArticles.filter((article) => {
+      if (q) {
+        const inTitle = article.title.toLowerCase().includes(q);
+        const inExcerpt = article.excerpt.toLowerCase().includes(q);
+        const inTag = article.tags.some((t) => t.toLowerCase().includes(q));
+        if (!inTitle && !inExcerpt && !inTag) return false;
+      }
+      if (categoryFilter !== 'All' && article.category !== categoryFilter) return false;
+      if (selectedTag && !article.tags.includes(selectedTag)) return false;
+      if (dateFilter !== 'all') {
+        const months = dateFilter === '1month' ? 1 : dateFilter === '3months' ? 3 : 6;
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - months);
+        if (article.publishedDate < cutoff) return false;
+      }
+      return true;
+    });
+  }, [searchQuery, categoryFilter, dateFilter, selectedTag]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 200) {
+        setVisibleCount((c) => c < filteredArticles.length ? Math.min(c + PAGE_SIZE, filteredArticles.length) : c);
+      }
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [filteredArticles.length]);
+
+  const visibleArticles = filteredArticles.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredArticles.length;
+
   return (
-    <Layout>
-      <div className="flex flex-col items-center justify-center py-32 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Articles</h1>
-        <p className="text-gray-500">Coming soon</p>
+    <Layout rightPanel={
+      <RecommendedTags
+        tags={tags}
+        onTagSelect={setCategoryFilter}
+      />
+    }>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Articles</h1>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search by title, summary or tag…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 mb-5">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>
+            ))}
+          </select>
+
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="all">All Time</option>
+            <option value="1month">Within 1 Month</option>
+            <option value="3months">Within 3 Months</option>
+            <option value="6months">Within 6 Months</option>
+          </select>
+
+          {selectedTag && (
+            <span className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg">
+              #{selectedTag}
+              <button onClick={handleClearTag} className="hover:text-blue-900">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )}
+        </div>
+
+        {/* Results count */}
+        <p className="text-sm text-gray-500 mb-5">
+          Showing <span className="font-medium text-gray-700">{Math.min(visibleCount, filteredArticles.length)}</span> of{' '}
+          <span className="font-medium text-gray-700">{filteredArticles.length}</span> article{filteredArticles.length !== 1 ? 's' : ''}
+        </p>
+
+        {/* Articles */}
+        {filteredArticles.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+              {visibleArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} onTagClick={handleTagClick} showCategoryBadge={false} activeTag={selectedTag} />
+              ))}
+            </div>
+            {hasMore && <div className="h-10 mt-4" />}
+          </>
+        ) : (
+          <div className="flex flex-col items-center py-20 text-center">
+            <Search className="w-10 h-10 text-gray-300 mb-3" />
+            <p className="text-gray-500 font-medium">No articles match your criteria</p>
+            <p className="text-gray-400 text-sm mt-1">Try adjusting your search or clearing filters</p>
+          </div>
+        )}
       </div>
     </Layout>
   );

@@ -119,7 +119,7 @@ export function HomePage() {
         </div>
         <div className="columns-1 md:columns-2 gap-5">
           {[...mockArticles].sort((a, b) => b.views - a.views).slice(0, 4).map((article) => (
-            <ArticleCard key={article.id} article={article} onTagClick={(tag) => navigate(`/articles?tag=${tag}`)} />
+            <ArticleCard key={article.id} article={article} showCategoryBadge={false} onTagClick={(tag) => navigate(`/articles?tag=${encodeURIComponent(tag)}`)} />
           ))}
         </div>
       </section>
