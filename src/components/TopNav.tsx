@@ -47,10 +47,10 @@ export function TopNav({ onSignInClick }: TopNavProps) {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-40 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex-shrink-0 text-lg font-bold text-blue-700 tracking-tight">
+          <Link to="/" className="flex-shrink-0 text-lg font-bold text-blue-700 tracking-tight transition-all duration-200 hover:text-indigo-600 hover:drop-shadow-sm">
             Flyways
           </Link>
 
@@ -59,11 +59,16 @@ export function TopNav({ onSignInClick }: TopNavProps) {
               <Link
                 key={path}
                 to={path}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive(path) ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActive(path)
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:text-blue-700 hover:bg-blue-50/60'
                 }`}
               >
                 {label}
+                {isActive(path) && (
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-blue-500" />
+                )}
               </Link>
             ))}
           </nav>
@@ -94,7 +99,7 @@ export function TopNav({ onSignInClick }: TopNavProps) {
                 )}
               </div>
             ) : (
-              <button onClick={onSignInClick} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              <button onClick={onSignInClick} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95">
                 Sign In
               </button>
             )}
