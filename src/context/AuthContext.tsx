@@ -1,11 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import type { User } from '../models/user';
 
-interface User {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  description?: string;
-}
+export type AuthModalMode = 'signin' | 'signup';
 
 interface AuthContextType {
   user: User | null;
@@ -13,7 +9,8 @@ interface AuthContextType {
   signIn: (user: User) => void;
   signOut: () => void;
   showSignInModal: boolean;
-  openSignInModal: () => void;
+  modalMode: AuthModalMode;
+  openSignInModal: (mode?: AuthModalMode) => void;
   closeSignInModal: () => void;
 }
 
@@ -22,8 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [modalMode, setModalMode] = useState<AuthModalMode>('signin');
 
-  // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -46,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const openSignInModal = () => {
+  const openSignInModal = (mode: AuthModalMode = 'signin') => {
+    setModalMode(mode);
     setShowSignInModal(true);
   };
 
@@ -54,17 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setShowSignInModal(false);
   };
 
-  const isAuthenticated = !!user;
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
-      signIn, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      signIn,
       signOut,
       showSignInModal,
+      modalMode,
       openSignInModal,
-      closeSignInModal
+      closeSignInModal,
     }}>
       {children}
     </AuthContext.Provider>
