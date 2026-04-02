@@ -24,11 +24,12 @@ export function ArticlesPage() {
 
   useEffect(() => {
     setCategoryFilter(selectedTag ? (selectedTag as CategoryFilter) : 'All');
+    setVisibleCount(PAGE_SIZE);
   }, [selectedTag]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [searchQuery, categoryFilter, dateFilter, selectedTag]);
+  }, [searchQuery, categoryFilter, dateFilter]);
 
   const handleTagClick = (tag: string) => setSearchParams({ tag });
   const handleClearTag = () => { setSearchParams({}); setCategoryFilter('All'); };
@@ -55,17 +56,7 @@ export function ArticlesPage() {
     });
   }, [searchQuery, categoryFilter, dateFilter, selectedTag]);
 
-  useEffect(() => {
-    const onScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 200) {
-        setVisibleCount((c) => c < filteredArticles.length ? Math.min(c + PAGE_SIZE, filteredArticles.length) : c);
-      }
-    };
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [filteredArticles.length]);
-
-  const visibleArticles = filteredArticles.slice(0, visibleCount);
+const visibleArticles = filteredArticles.slice(0, visibleCount);
   const hasMore = visibleCount < filteredArticles.length;
 
   return (
@@ -142,12 +133,21 @@ export function ArticlesPage() {
         {/* Articles */}
         {filteredArticles.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
               {visibleArticles.map((article) => (
                 <ArticleCard key={article.id} article={article} onTagClick={handleTagClick} showCategoryBadge={false} activeTag={selectedTag} />
               ))}
             </div>
-            {hasMore && <div className="h-10 mt-4" />}
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredArticles.length))}
+                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Load More
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center py-20 text-center">
