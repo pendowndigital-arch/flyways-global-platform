@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from '../models/user';
+import { updateProfile } from '../services/userService';
 
 export type AuthModalMode = 'signin' | 'signup';
 
@@ -8,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signIn: (user: User) => void;
   signOut: () => void;
+  updateUser: (user: User) => Promise<void>;
   showSignInModal: boolean;
   modalMode: AuthModalMode;
   openSignInModal: (mode?: AuthModalMode) => void;
@@ -43,6 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  const updateUser = async (updated: User) => {
+    const result = await updateProfile(updated);
+    setUser(result);
+    localStorage.setItem('user', JSON.stringify(result));
+  };
+
   const openSignInModal = (mode: AuthModalMode = 'signin') => {
     setModalMode(mode);
     setShowSignInModal(true);
@@ -58,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       signIn,
       signOut,
+      updateUser,
       showSignInModal,
       modalMode,
       openSignInModal,
