@@ -1,5 +1,8 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+export const ASSETS_BASE = BASE.replace(/\/api$/, '');
 
 export const ENDPOINTS = {
-  tags: `${BASE}/tags`,
+  categories: `${BASE}/categories?_format=json`,
+  articles: `${BASE}/articles?_format=json`,
+  articleDetail: (uid: string) => `${BASE}/article/${uid}`,
 };

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, BookOpen, Globe, GraduationCap, Home as HomeIcon, type LucideIcon } from 'lucide-react';
+import { Link, useNavigate, useLoaderData } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { mockArticles } from '../data/mockArticles';
 import { Layout } from './Layout';
 import { ArticleCard } from './ArticleCard';
+import { Tag } from '../models/tag';
 
 const SLIDES = [
   {
@@ -32,11 +33,11 @@ const SLIDES = [
   },
 ];
 
-const CATEGORIES: { label: string; icon: LucideIcon; color: string; tag: string }[] = [
-  { label: 'Visa',         icon: Globe,        color: 'bg-blue-50 text-blue-700 border-blue-100',       tag: 'Visa' },
-  { label: 'Scholarships', icon: GraduationCap, color: 'bg-emerald-50 text-emerald-700 border-emerald-100', tag: 'Scholarship' },
-  { label: 'Living Abroad',icon: HomeIcon,      color: 'bg-orange-50 text-orange-700 border-orange-100', tag: 'Living' },
-  { label: 'Regulations',  icon: BookOpen,      color: 'bg-purple-50 text-purple-700 border-purple-100', tag: 'Regulation' },
+const CATEGORY_COLORS = [
+  'bg-blue-50 text-blue-700 border-blue-100',
+  'bg-emerald-50 text-emerald-700 border-emerald-100',
+  'bg-orange-50 text-orange-700 border-orange-100',
+  'bg-purple-50 text-purple-700 border-purple-100',
 ];
 
 const STATS = [
@@ -86,6 +87,8 @@ function HeroSlider() {
 
 export function HomePage() {
   const navigate = useNavigate();
+  const allCategories = useLoaderData() as Tag[];
+  const categories = allCategories.filter((t) => t.priority);
 
   return (
     <Layout>
@@ -94,10 +97,18 @@ export function HomePage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Browse by Category</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {CATEGORIES.map(({ label, icon: Icon, color, tag }) => (
-            <Link key={tag} to={`/articles?tag=${tag}`} className={`flex flex-col items-center gap-3 p-5 rounded-xl border ${color} hover:shadow-md transition-shadow`}>
-              <Icon size={28} />
-              <span className="text-sm font-medium">{label}</span>
+          {categories.map((cat, i) => (
+            <Link
+              key={cat.id}
+              to={`/articles?tag=${encodeURIComponent(cat.name)}`}
+              className={`flex flex-col items-center gap-3 p-5 rounded-xl border ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]} hover:shadow-md transition-shadow`}
+            >
+              {cat.image ? (
+                <img src={cat.image} alt={cat.name} className="w-8 h-8 object-contain" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-current opacity-20" />
+              )}
+              <span className="text-sm font-medium">{cat.name}</span>
             </Link>
           ))}
         </div>

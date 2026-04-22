@@ -1,6 +1,6 @@
 import { Article } from '../models/article';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Calendar } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface ArticleCardProps {
   article: Article;
@@ -10,17 +10,13 @@ interface ArticleCardProps {
 }
 
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
-}
-
 
 export function ArticleCard({ article, onTagClick, showCategoryBadge = true, activeTag }: ArticleCardProps) {
   const navigate = useNavigate();
 
   return (
     <div
-      onClick={() => navigate(`/articles/${article.id}`)}
+      onClick={() => navigate(`/articles/${article.uid}`)}
       className={`group bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 p-5 cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/70 hover:border-blue-200 flex flex-col gap-3 h-full`}
     >
       {showCategoryBadge && (
@@ -37,10 +33,11 @@ export function ArticleCard({ article, onTagClick, showCategoryBadge = true, act
         {article.excerpt}
       </p>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 pt-1 border-t border-gray-100">
-        <span className="flex items-center gap-1"><Calendar size={14} />{formatDate(article.publishedDate)}</span>
-        <span className="flex items-center gap-1"><Clock size={14} />{article.readTime} min read</span>
-      </div>
+      {article.readTime && (
+        <div className="flex items-center gap-x-3 text-xs text-gray-400 pt-1 border-t border-gray-100">
+          <span className="flex items-center gap-1"><Clock size={14} />{article.readTime}</span>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {(() => {

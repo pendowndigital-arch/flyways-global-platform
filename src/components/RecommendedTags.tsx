@@ -9,7 +9,7 @@ interface RecommendedTagsProps {
 export function RecommendedTags({ tags, onTagSelect }: RecommendedTagsProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTag = searchParams.get('tag');
-  const recommended = tags.filter((t) => t.isRecommended);
+  const recommended = tags.filter((t) => t.priority);
 
   if (recommended.length === 0) return null;
 

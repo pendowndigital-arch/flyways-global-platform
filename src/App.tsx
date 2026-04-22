@@ -7,14 +7,29 @@ import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { fetchTags } from './services/tagsService';
+import { fetchArticles, fetchArticleByUid } from './services/articlesService';
 
 const router = createBrowserRouter([
-  { path: '/',            element: <HomePage /> },
-  { path: '/articles',    element: <ArticlesPage />, loader: () => fetchTags() },
-  { path: '/articles/:id',element: <ArticleDetailPage /> },
-  { path: '/profile',     element: <ProfilePage /> },
-  { path: '/contact',     element: <ContactPage /> },
-  { path: '/about',       element: <AboutPage /> },
+  {
+    path: '/',
+    element: <HomePage />,
+    loader: fetchTags,
+    shouldRevalidate: () => false,
+  },
+  {
+    path: '/articles',
+    element: <ArticlesPage />,
+    loader: () => Promise.all([fetchTags(), fetchArticles(0)]),
+    shouldRevalidate: () => false,
+  },
+  {
+    path: '/articles/:uid',
+    element: <ArticleDetailPage />,
+    loader: ({ params }) => fetchArticleByUid(params.uid!),
+  },
+  { path: '/profile',       element: <ProfilePage /> },
+  { path: '/contact',       element: <ContactPage /> },
+  { path: '/about',         element: <AboutPage /> },
 ]);
 
 function App() {

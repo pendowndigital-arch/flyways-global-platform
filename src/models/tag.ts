@@ -1,5 +1,13 @@
 export interface Tag {
   id: string;
   name: string;
-  isRecommended: boolean;
+  priority: boolean;
+  image: string;
+}
+
+export interface ApiCategory {
+  tid: string;
+  name: string;
+  priority: string | boolean;
+  image: string;
 }

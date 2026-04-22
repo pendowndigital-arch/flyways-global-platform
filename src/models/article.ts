@@ -1,14 +1,54 @@
+// App models
 export interface Article {
   id: string;
+  uid: string;
   title: string;
-  excerpt: string;
-  content: string;
-  tags: string[];
-  publishedDate: Date;
-  category: string;
-  readTime: number; // in minutes
-  views: number;
+  excerpt: string;   // from API `summary`
+  image: string;
+  readTime: string;  // from API `reading_time`
+  tags: string[];    // split from comma-separated API `tags`
+  category: string;  // derived from first tag
+  publishedDate?: Date; // from API `created` (Unix timestamp)
 }
 
-export type DateFilter = 'all' | '1month' | '3months' | '6months';
+export interface ArticleDetail {
+  id: string;
+  uid: string;
+  title: string;
+  image: string;
+  body: string;      // HTML — from API `body`
+  readTime: string;  // from API `reading_time`
+  tags: string[];
+}
+
+// Raw API shapes
+export interface ApiArticleRow {
+  id: string;
+  uid: string;
+  title: string;
+  summary: string;
+  image: string;
+  reading_time: string;
+  tags: string;
+  created?: string; // Unix timestamp string
+}
+
+export interface ApiArticleDetail {
+  id: string;
+  uid: string;
+  title: string;
+  image: string;
+  body: string;
+  reading_time: string;
+  tags: string;
+}
+
+export interface ApiPager {
+  current_page: number;
+  total_items: number;
+  total_pages: number;
+  items_per_page: number;
+}
+
 export type CategoryFilter = string;
+export type DateFilter = 'all' | '1month' | '3months' | '6months';

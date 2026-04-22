@@ -1,43 +1,50 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useLoaderData } from 'react-router-dom';
 import { ArticleCard } from '../components/ArticleCard';
-import { mockArticles } from '../data/mockArticles';
-import { CategoryFilter, DateFilter } from '../models/article';
+import { Article, CategoryFilter, DateFilter, ApiPager } from '../models/article';
+import { fetchArticles, ArticlesResponse } from '../services/articlesService';
 import { Tag } from '../models/tag';
 import { Search, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { RecommendedTags } from '../components/RecommendedTags';
 
-const PAGE_SIZE = 4;
-
 export function ArticlesPage() {
+  const [tags, initialData] = useLoaderData() as [Tag[], ArticlesResponse];
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const tags = useLoaderData() as Tag[];
+  const [articles, setArticles] = useState<Article[]>(initialData.articles);
+  const [pager, setPager] = useState<ApiPager>(initialData.pager);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const categories: CategoryFilter[] = ['All', ...tags.map((t) => t.name)];
-
   const selectedTag = searchParams.get('tag');
 
   useEffect(() => {
     setCategoryFilter(selectedTag ? (selectedTag as CategoryFilter) : 'All');
-    setVisibleCount(PAGE_SIZE);
   }, [selectedTag]);
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [searchQuery, categoryFilter, dateFilter]);
 
   const handleTagClick = (tag: string) => setSearchParams({ tag });
   const handleClearTag = () => { setSearchParams({}); setCategoryFilter('All'); };
 
-  // Will be replaced with API data later — useMemo avoids re-filtering a large list on every render
+  const loadMore = () => {
+    if (!pager || currentPage >= pager.total_pages - 1 || loading) return;
+    const nextPage = currentPage + 1;
+    setLoading(true);
+    fetchArticles(nextPage).then(({ articles: rows, pager: p }) => {
+      setArticles((prev) => [...prev, ...rows]);
+      setPager(p);
+      setCurrentPage(nextPage);
+      setLoading(false);
+    });
+  };
+
   const filteredArticles = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return mockArticles.filter((article) => {
+    return articles.filter((article) => {
       if (q) {
         const inTitle = article.title.toLowerCase().includes(q);
         const inExcerpt = article.excerpt.toLowerCase().includes(q);
@@ -46,7 +53,7 @@ export function ArticlesPage() {
       }
       if (categoryFilter !== 'All' && article.category !== categoryFilter) return false;
       if (selectedTag && !article.tags.includes(selectedTag)) return false;
-      if (dateFilter !== 'all') {
+      if (dateFilter !== 'all' && article.publishedDate) {
         const months = dateFilter === '1month' ? 1 : dateFilter === '3months' ? 3 : 6;
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - months);
@@ -54,17 +61,14 @@ export function ArticlesPage() {
       }
       return true;
     });
-  }, [searchQuery, categoryFilter, dateFilter, selectedTag]);
+  }, [articles, searchQuery, categoryFilter, dateFilter, selectedTag]);
 
-const visibleArticles = filteredArticles.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredArticles.length;
+  const hasMore = pager ? currentPage < pager.total_pages - 1 : false;
+  const totalItems = pager?.total_items ?? 0;
 
   return (
     <Layout rightPanel={
-      <RecommendedTags
-        tags={tags}
-        onTagSelect={setCategoryFilter}
-      />
+      <RecommendedTags tags={tags} onTagSelect={setCategoryFilter} />
     }>
       <div>
         <div className="mb-6">
@@ -126,25 +130,26 @@ const visibleArticles = filteredArticles.slice(0, visibleCount);
 
         {/* Results count */}
         <p className="text-sm text-gray-500 mb-5">
-          Showing <span className="font-medium text-gray-700">{Math.min(visibleCount, filteredArticles.length)}</span> of{' '}
-          <span className="font-medium text-gray-700">{filteredArticles.length}</span> article{filteredArticles.length !== 1 ? 's' : ''}
+          Showing <span className="font-medium text-gray-700">{filteredArticles.length}</span> of{' '}
+          <span className="font-medium text-gray-700">{totalItems}</span> article{totalItems !== 1 ? 's' : ''}
         </p>
 
         {/* Articles */}
         {filteredArticles.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
-              {visibleArticles.map((article) => (
+              {filteredArticles.map((article) => (
                 <ArticleCard key={article.id} article={article} onTagClick={handleTagClick} showCategoryBadge={false} activeTag={selectedTag} />
               ))}
             </div>
             {hasMore && (
               <div className="flex justify-center mt-6">
                 <button
-                  onClick={() => setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredArticles.length))}
-                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={loadMore}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  Load More
+                  {loading ? 'Loading…' : 'Load More'}
                 </button>
               </div>
             )}

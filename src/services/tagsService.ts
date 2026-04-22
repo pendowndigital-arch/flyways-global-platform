@@ -1,24 +1,20 @@
-import { Tag } from '../models/tag';
-// import { ENDPOINTS } from '../config/api';
+import { Tag, ApiCategory } from '../models/tag';
+import { ENDPOINTS, ASSETS_BASE } from '../config/api';
 
-// Mock data — replace with real fetch when backend is ready:
-// const res = await fetch(ENDPOINTS.tags);
-// return res.json();
-const MOCK_TAGS: Tag[] = [
-  { id: '1',  name: 'Visa',          isRecommended: true  },
-  { id: '2',  name: 'Regulation',    isRecommended: true  },
-  { id: '3',  name: 'Scholarship',   isRecommended: true  },
-  { id: '4',  name: 'Living',        isRecommended: true  },
-  { id: '5',  name: 'Immigration',   isRecommended: false },
-  { id: '6',  name: 'Student',       isRecommended: true  },
-  { id: '7',  name: 'Housing',       isRecommended: false },
-  { id: '8',  name: 'Academic',      isRecommended: false },
-  { id: '9',  name: 'Financial Aid', isRecommended: true  },
-  { id: '10', name: 'Application',   isRecommended: true  },
-  { id: '11', name: 'International', isRecommended: false },
-  { id: '12', name: 'Campus',        isRecommended: false },
-];
+let _cache: Promise<Tag[]> | null = null;
 
-export async function fetchTags(): Promise<Tag[]> {
-  return Promise.resolve(MOCK_TAGS);
+export function fetchTags(): Promise<Tag[]> {
+  if (!_cache) {
+    _cache = fetch(ENDPOINTS.categories)
+      .then((res) => res.json())
+      .then((data: ApiCategory[]) =>
+        data.map((c) => ({
+          id: c.tid,
+          name: c.name,
+          priority: c.priority === '1' || c.priority === true,
+          image: c.image ? `${ASSETS_BASE}${c.image}` : '',
+        }))
+      );
+  }
+  return _cache;
 }

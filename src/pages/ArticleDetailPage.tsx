@@ -1,20 +1,17 @@
-import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockArticles } from '../data/mockArticles';
-import { ArrowLeft, Clock, Calendar, Tag, Link2, Check, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLoaderData } from 'react-router-dom';
+import { ArrowLeft, Clock, Tag, Link2, Check, Lock } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
-}
+import { ArticleDetail } from '../models/article';
 
 export function ArticleDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const article = useLoaderData() as ArticleDetail | null;
   const navigate = useNavigate();
   const { isAuthenticated, openSignInModal } = useAuth();
-  const article = mockArticles.find((a) => a.id === id);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -53,34 +50,20 @@ export function ArticleDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-5">
               {article.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                {formatDate(article.publishedDate)}
-              </span>
-              <span className="flex items-center gap-1.5">
+            {article.readTime && (
+              <div className="flex items-center gap-1.5 text-sm text-gray-500">
                 <Clock className="w-4 h-4 text-gray-400" />
-                {article.readTime} min read
-              </span>
-            </div>
+                {article.readTime}
+              </div>
+            )}
           </header>
 
           {/* Auth gate — shown when not signed in */}
           {!isAuthenticated ? (
             <>
-              {/* Readable excerpt preview */}
-              <div className="px-8 pt-8 pb-0">
-                <p className="text-gray-700 leading-relaxed text-base">
-                  {article.excerpt}
-                </p>
-              </div>
-
               {/* Fade + lock card */}
               <div className="relative">
-                {/* Fade strip */}
                 <div className="h-16 bg-gradient-to-b from-white/0 to-white" />
-
-                {/* Lock card */}
                 <div className="px-8 pb-10 flex flex-col items-center text-center">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 rounded-full flex items-center justify-center mb-4 shadow-sm">
                     <Lock className="w-5 h-5 text-blue-600" />
@@ -103,12 +86,11 @@ export function ArticleDetailPage() {
             </>
           ) : (
             <>
-              {/* Full article body */}
-              <div className="p-8">
-                <p className="text-gray-700 leading-relaxed text-base">
-                  {article.content}
-                </p>
-              </div>
+              {/* Full article body — rendered as HTML */}
+              <div
+                className="p-8 prose prose-sm max-w-none text-gray-700"
+                dangerouslySetInnerHTML={{ __html: article.body }}
+              />
 
               {/* Share section */}
               <div className="px-8 py-5 border-t border-gray-100">
