@@ -8,12 +8,13 @@ import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { fetchTags } from './services/tagsService';
 import { fetchArticles, fetchArticleByUid } from './services/articlesService';
+import { fetchStats } from './services/statsService';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <HomePage />,
-    loader: fetchTags,
+    loader: () => Promise.all([fetchTags(), fetchStats()]),
     shouldRevalidate: () => false,
   },
   {

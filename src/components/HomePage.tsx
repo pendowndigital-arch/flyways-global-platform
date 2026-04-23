@@ -5,6 +5,7 @@ import { mockArticles } from '../data/mockArticles';
 import { Layout } from './Layout';
 import { ArticleCard } from './ArticleCard';
 import { Tag } from '../models/tag';
+import { SiteStats } from '../services/statsService';
 
 const SLIDES = [
   {
@@ -40,11 +41,6 @@ const CATEGORY_COLORS = [
   'bg-purple-50 text-purple-700 border-purple-100',
 ];
 
-const STATS = [
-  { value: '8+',   label: 'Articles' },
-  { value: '4',    label: 'Categories' },
-  { value: '10k+', label: 'Readers' },
-];
 
 function HeroSlider() {
   const [current, setCurrent] = useState(0);
@@ -87,7 +83,7 @@ function HeroSlider() {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const allCategories = useLoaderData() as Tag[];
+  const [allCategories, apiStats] = useLoaderData() as [Tag[], SiteStats];
   const categories = allCategories.filter((t) => t.priority);
 
   return (
@@ -115,7 +111,11 @@ export function HomePage() {
       </section>
 
       <div className="grid grid-cols-3 gap-4 mb-10">
-        {STATS.map(({ value, label }) => (
+        {[
+          { value: String(apiStats.articles), label: 'Articles' },
+          { value: String(apiStats.tags),     label: 'Categories' },
+          { value: String(apiStats.users),    label: 'Readers' },
+        ].map(({ value, label }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <p className="text-2xl font-bold text-blue-600">{value}</p>
             <p className="text-sm text-gray-500 mt-0.5">{label}</p>
@@ -129,7 +129,7 @@ export function HomePage() {
           <Link to="/articles" className="text-sm text-blue-600 hover:underline">View all →</Link>
         </div>
         <div className="columns-1 md:columns-2 gap-5">
-          {[...mockArticles].sort((a, b) => b.views - a.views).slice(0, 4).map((article) => (
+          {[...mockArticles].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 4).map((article) => (
             <div key={article.id} className="mb-3 break-inside-avoid">
               <ArticleCard article={article} showCategoryBadge={false} onTagClick={(tag) => navigate(`/articles?tag=${encodeURIComponent(tag)}`)} />
             </div>

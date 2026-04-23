@@ -9,6 +9,7 @@ export interface Article {
   tags: string[];    // split from comma-separated API `tags`
   category: string;  // derived from first tag
   publishedDate?: Date; // from API `created` (Unix timestamp)
+  views?: number;
 }
 
 export interface ArticleDetail {
