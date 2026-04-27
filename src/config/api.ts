@@ -6,4 +6,5 @@ export const ENDPOINTS = {
   articles: `${BASE}/articles?_format=json`,
   articleDetail: (uid: string) => `${BASE}/article/${uid}`,
   stats: `${BASE}/stats?_format=json`,
+  popularArticles: `${BASE}/popular_articles?_format=json`,
 };

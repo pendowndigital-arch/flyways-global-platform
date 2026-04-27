@@ -9,18 +9,22 @@ import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { fetchTags } from './services/tagsService';
 import { fetchArticles, fetchArticleByUid } from './services/articlesService';
 import { fetchStats } from './services/statsService';
+import { fetchPopularArticles } from './services/popularArticlesService';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <HomePage />,
-    loader: () => Promise.all([fetchTags(), fetchStats()]),
+    loader: () => Promise.all([fetchTags(), fetchStats(), fetchPopularArticles()]),
     shouldRevalidate: () => false,
   },
   {
     path: '/articles',
     element: <ArticlesPage />,
-    loader: () => Promise.all([fetchTags(), fetchArticles(0)]),
+    loader: ({ request }: { request: Request }) => {
+      const tag = new URL(request.url).searchParams.get('tag') || undefined;
+      return Promise.all([fetchTags(), fetchArticles(0, tag ? { tag } : {})]);
+    },
     shouldRevalidate: () => false,
   },
   {

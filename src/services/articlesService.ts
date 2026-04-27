@@ -6,6 +6,11 @@ export interface ArticlesResponse {
   pager: ApiPager;
 }
 
+export interface ArticleFilters {
+  tag?: string;
+  time?: string;
+}
+
 function parseTags(raw: string): string[] {
   return raw ? raw.split(',').map((t) => t.trim()).filter(Boolean) : [];
 }
@@ -37,13 +42,17 @@ function mapArticleDetail(row: ApiArticleDetail): ArticleDetail {
   };
 }
 
-const _pageCache = new Map<number, Promise<ArticlesResponse>>();
+const _cache = new Map<string, Promise<ArticlesResponse>>();
 
-export function fetchArticles(page = 0): Promise<ArticlesResponse> {
-  if (!_pageCache.has(page)) {
-    _pageCache.set(
-      page,
-      fetch(`${ENDPOINTS.articles}&page=${page}`)
+export function fetchArticles(page = 0, filters: ArticleFilters = {}): Promise<ArticlesResponse> {
+  const cacheKey = `${page}|${filters.tag ?? ''}|${filters.time ?? ''}`;
+  if (!_cache.has(cacheKey)) {
+    let url = `${ENDPOINTS.articles}&page=${page}`;
+    if (filters.tag) url += `&tag=${encodeURIComponent(filters.tag)}`;
+    if (filters.time) url += `&time=${encodeURIComponent(filters.time)}`;
+    _cache.set(
+      cacheKey,
+      fetch(url)
         .then((res) => res.json())
         .then((data) => ({
           articles: (data.rows ?? []).map(mapArticle),
@@ -51,7 +60,7 @@ export function fetchArticles(page = 0): Promise<ArticlesResponse> {
         }))
     );
   }
-  return _pageCache.get(page)!;
+  return _cache.get(cacheKey)!;
 }
 
 export async function fetchArticleByUid(uid: string): Promise<ArticleDetail | null> {

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLoaderData } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockArticles } from '../data/mockArticles';
 import { Layout } from './Layout';
 import { ArticleCard } from './ArticleCard';
 import { Tag } from '../models/tag';
+import { Article } from '../models/article';
 import { SiteStats } from '../services/statsService';
 
 const SLIDES = [
@@ -83,7 +83,7 @@ function HeroSlider() {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [allCategories, apiStats] = useLoaderData() as [Tag[], SiteStats];
+  const [allCategories, apiStats, popularArticles] = useLoaderData() as [Tag[], SiteStats, Article[]];
   const categories = allCategories.filter((t) => t.priority);
 
   return (
@@ -129,7 +129,7 @@ export function HomePage() {
           <Link to="/articles" className="text-sm text-blue-600 hover:underline">View all →</Link>
         </div>
         <div className="columns-1 md:columns-2 gap-5">
-          {[...mockArticles].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 4).map((article) => (
+          {popularArticles.map((article) => (
             <div key={article.id} className="mb-3 break-inside-avoid">
               <ArticleCard article={article} showCategoryBadge={false} onTagClick={(tag) => navigate(`/articles?tag=${encodeURIComponent(tag)}`)} />
             </div>

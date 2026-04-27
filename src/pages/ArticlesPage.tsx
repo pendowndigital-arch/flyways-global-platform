@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useLoaderData } from 'react-router-dom';
 import { ArticleCard } from '../components/ArticleCard';
-import { Article, CategoryFilter, DateFilter, ApiPager } from '../models/article';
+import { Article, ApiPager } from '../models/article';
 import { fetchArticles, ArticlesResponse } from '../services/articlesService';
 import { Tag } from '../models/tag';
 import { Search, X } from 'lucide-react';
@@ -10,65 +10,82 @@ import { RecommendedTags } from '../components/RecommendedTags';
 
 export function ArticlesPage() {
   const [tags, initialData] = useLoaderData() as [Tag[], ArticlesResponse];
-
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const selectedTag = searchParams.get('tag') ?? '';
+  const [dateFilter, setDateFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [articles, setArticles] = useState<Article[]>(initialData.articles);
   const [pager, setPager] = useState<ApiPager>(initialData.pager);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const categories: CategoryFilter[] = ['All', ...tags.map((t) => t.name)];
-  const selectedTag = searchParams.get('tag');
+  const fetchFiltered = (tag: string, time: string) => {
+    setLoading(true);
+    setArticles([]);
+    setCurrentPage(0);
+    fetchArticles(0, { tag: tag || undefined, time: time || undefined })
+      .then(({ articles: rows, pager: p }) => {
+        setArticles(rows);
+        setPager(p);
+        setLoading(false);
+      });
+  };
 
-  useEffect(() => {
-    setCategoryFilter(selectedTag ? (selectedTag as CategoryFilter) : 'All');
-  }, [selectedTag]);
+  const handleTagClick = (tag: string) => {
+    setSearchParams({ tag });
+    fetchFiltered(tag, dateFilter);
+  };
 
-  const handleTagClick = (tag: string) => setSearchParams({ tag });
-  const handleClearTag = () => { setSearchParams({}); setCategoryFilter('All'); };
+  const handleClearTag = () => {
+    setSearchParams({});
+    fetchFiltered('', dateFilter);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    const newTag = value === 'All' ? '' : value;
+    newTag ? setSearchParams({ tag: newTag }) : setSearchParams({});
+    fetchFiltered(newTag, dateFilter);
+  };
+
+  const handleDateChange = (time: string) => {
+    setDateFilter(time);
+    fetchFiltered(selectedTag, time);
+  };
 
   const loadMore = () => {
     if (!pager || currentPage >= pager.total_pages - 1 || loading) return;
     const nextPage = currentPage + 1;
     setLoading(true);
-    fetchArticles(nextPage).then(({ articles: rows, pager: p }) => {
-      setArticles((prev) => [...prev, ...rows]);
-      setPager(p);
-      setCurrentPage(nextPage);
-      setLoading(false);
-    });
+    fetchArticles(nextPage, { tag: selectedTag || undefined, time: dateFilter || undefined })
+      .then(({ articles: rows, pager: p }) => {
+        setArticles((prev) => [...prev, ...rows]);
+        setPager(p);
+        setCurrentPage(nextPage);
+        setLoading(false);
+      });
   };
 
   const filteredArticles = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return articles.filter((article) => {
-      if (q) {
-        const inTitle = article.title.toLowerCase().includes(q);
-        const inExcerpt = article.excerpt.toLowerCase().includes(q);
-        const inTag = article.tags.some((t) => t.toLowerCase().includes(q));
-        if (!inTitle && !inExcerpt && !inTag) return false;
-      }
-      if (categoryFilter !== 'All' && article.category !== categoryFilter) return false;
-      if (selectedTag && !article.tags.includes(selectedTag)) return false;
-      if (dateFilter !== 'all' && article.publishedDate) {
-        const months = dateFilter === '1month' ? 1 : dateFilter === '3months' ? 3 : 6;
-        const cutoff = new Date();
-        cutoff.setMonth(cutoff.getMonth() - months);
-        if (article.publishedDate < cutoff) return false;
-      }
-      return true;
-    });
-  }, [articles, searchQuery, categoryFilter, dateFilter, selectedTag]);
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return articles;
+    return articles.filter(({ title, excerpt, tags: t }) =>
+      title.toLowerCase().includes(q) ||
+      excerpt.toLowerCase().includes(q) ||
+      t.some((tag) => tag.toLowerCase().includes(q))
+    );
+  }, [articles, searchQuery]);
 
+  const categories = ['All', ...tags.map((t) => t.name)];
   const hasMore = pager ? currentPage < pager.total_pages - 1 : false;
   const totalItems = pager?.total_items ?? 0;
 
   return (
     <Layout rightPanel={
-      <RecommendedTags tags={tags} onTagSelect={setCategoryFilter} />
+      <RecommendedTags
+        tags={tags}
+        onTagSelect={(tag) => fetchFiltered(tag === 'All' ? '' : tag, dateFilter)}
+      />
     }>
       <div>
         <div className="mb-6">
@@ -98,8 +115,8 @@ export function ArticlesPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-5">
           <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+            value={selectedTag || 'All'}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             {categories.map((c) => (
@@ -109,13 +126,13 @@ export function ArticlesPage() {
 
           <select
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            onChange={(e) => handleDateChange(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
-            <option value="all">All Time</option>
-            <option value="1month">Within 1 Month</option>
-            <option value="3months">Within 3 Months</option>
-            <option value="6months">Within 6 Months</option>
+            <option value="">All Time</option>
+            <option value="-30day">Within 1 Month</option>
+            <option value="-60day">Within 3 Months</option>
+            <option value="-180day">Within 6 Months</option>
           </select>
 
           {selectedTag && (
@@ -135,11 +152,15 @@ export function ArticlesPage() {
         </p>
 
         {/* Articles */}
-        {filteredArticles.length > 0 ? (
+        {loading && articles.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filteredArticles.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
               {filteredArticles.map((article) => (
-                <ArticleCard key={article.id} article={article} onTagClick={handleTagClick} showCategoryBadge={false} activeTag={selectedTag} />
+                <ArticleCard key={article.id} article={article} onTagClick={handleTagClick} showCategoryBadge={false} activeTag={selectedTag || null} />
               ))}
             </div>
             {hasMore && (
