@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useSearchParams, useLoaderData } from 'react-router-dom';
+import { useLoaderData } from 'react-router-dom';
 import { ArticleCard } from '../components/ArticleCard';
 import { Article, ApiPager } from '../models/article';
 import { fetchArticles, ArticlesResponse } from '../services/articlesService';
@@ -7,51 +7,44 @@ import { Tag } from '../models/tag';
 import { Search, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { RecommendedTags } from '../components/RecommendedTags';
+import { articlesState } from '../state/articlesState';
 
 export function ArticlesPage() {
   const [tags, initialData] = useLoaderData() as [Tag[], ArticlesResponse];
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const selectedTag = searchParams.get('tag') ?? '';
-  const [dateFilter, setDateFilter] = useState('');
+  const [selectedTag, setSelectedTag] = useState(articlesState.tag);
+  const [dateFilter, setDateFilter] = useState(articlesState.time);
   const [searchQuery, setSearchQuery] = useState('');
   const [articles, setArticles] = useState<Article[]>(initialData.articles);
   const [pager, setPager] = useState<ApiPager>(initialData.pager);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(articlesState.page);
   const [loading, setLoading] = useState(false);
 
   const fetchFiltered = (tag: string, time: string) => {
+    articlesState.tag = tag;
+    articlesState.time = time;
+    articlesState.articles = null;
+    articlesState.pager = null;
+    articlesState.page = 0;
+    setSelectedTag(tag);
+    setDateFilter(time);
     setLoading(true);
     setArticles([]);
     setCurrentPage(0);
     fetchArticles(0, { tag: tag || undefined, time: time || undefined })
       .then(({ articles: rows, pager: p }) => {
+        articlesState.articles = rows;
+        articlesState.pager = p;
         setArticles(rows);
         setPager(p);
         setLoading(false);
       });
   };
 
-  const handleTagClick = (tag: string) => {
-    setSearchParams({ tag });
-    fetchFiltered(tag, dateFilter);
-  };
-
-  const handleClearTag = () => {
-    setSearchParams({});
-    fetchFiltered('', dateFilter);
-  };
-
-  const handleCategoryChange = (value: string) => {
-    const newTag = value === 'All' ? '' : value;
-    newTag ? setSearchParams({ tag: newTag }) : setSearchParams({});
-    fetchFiltered(newTag, dateFilter);
-  };
-
-  const handleDateChange = (time: string) => {
-    setDateFilter(time);
-    fetchFiltered(selectedTag, time);
-  };
+  const handleTagClick = (tag: string) => fetchFiltered(tag, dateFilter);
+  const handleClearTag = () => fetchFiltered('', dateFilter);
+  const handleCategoryChange = (value: string) => fetchFiltered(value === 'All' ? '' : value, dateFilter);
+  const handleDateChange = (time: string) => fetchFiltered(selectedTag, time);
 
   const loadMore = () => {
     if (!pager || currentPage >= pager.total_pages - 1 || loading) return;
@@ -59,7 +52,13 @@ export function ArticlesPage() {
     setLoading(true);
     fetchArticles(nextPage, { tag: selectedTag || undefined, time: dateFilter || undefined })
       .then(({ articles: rows, pager: p }) => {
-        setArticles((prev) => [...prev, ...rows]);
+        setArticles((prev) => {
+          const merged = [...prev, ...rows];
+          articlesState.articles = merged;
+          return merged;
+        });
+        articlesState.pager = p;
+        articlesState.page = nextPage;
         setPager(p);
         setCurrentPage(nextPage);
         setLoading(false);

@@ -10,6 +10,7 @@ import { fetchTags } from './services/tagsService';
 import { fetchArticles, fetchArticleByUid } from './services/articlesService';
 import { fetchStats } from './services/statsService';
 import { fetchPopularArticles } from './services/popularArticlesService';
+import { articlesState } from './state/articlesState';
 
 const router = createBrowserRouter([
   {
@@ -21,9 +22,11 @@ const router = createBrowserRouter([
   {
     path: '/articles',
     element: <ArticlesPage />,
-    loader: ({ request }: { request: Request }) => {
-      const tag = new URL(request.url).searchParams.get('tag') || undefined;
-      return Promise.all([fetchTags(), fetchArticles(0, tag ? { tag } : {})]);
+    loader: () => {
+      const cached = articlesState.articles
+        ? Promise.resolve({ articles: articlesState.articles, pager: articlesState.pager! })
+        : fetchArticles(0, { tag: articlesState.tag || undefined, time: articlesState.time || undefined });
+      return Promise.all([fetchTags(), cached]);
     },
     shouldRevalidate: () => false,
   },

@@ -42,25 +42,16 @@ function mapArticleDetail(row: ApiArticleDetail): ArticleDetail {
   };
 }
 
-const _cache = new Map<string, Promise<ArticlesResponse>>();
-
 export function fetchArticles(page = 0, filters: ArticleFilters = {}): Promise<ArticlesResponse> {
-  const cacheKey = `${page}|${filters.tag ?? ''}|${filters.time ?? ''}`;
-  if (!_cache.has(cacheKey)) {
-    let url = `${ENDPOINTS.articles}&page=${page}`;
-    if (filters.tag) url += `&tag=${encodeURIComponent(filters.tag)}`;
-    if (filters.time) url += `&time=${encodeURIComponent(filters.time)}`;
-    _cache.set(
-      cacheKey,
-      fetch(url)
-        .then((res) => res.json())
-        .then((data) => ({
-          articles: (data.rows ?? []).map(mapArticle),
-          pager: data.pager,
-        }))
-    );
-  }
-  return _cache.get(cacheKey)!;
+  let url = `${ENDPOINTS.articles}&page=${page}`;
+  if (filters.tag) url += `&tag=${encodeURIComponent(filters.tag)}`;
+  if (filters.time) url += `&time=${encodeURIComponent(filters.time)}`;
+  return fetch(url)
+    .then((res) => res.json())
+    .then((data) => ({
+      articles: (data.rows ?? []).map(mapArticle),
+      pager: data.pager,
+    }));
 }
 
 export async function fetchArticleByUid(uid: string): Promise<ArticleDetail | null> {
