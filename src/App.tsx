@@ -6,6 +6,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
+import { RouteError } from './components/RouteError';
+import { RouteLoading } from './components/RouteLoading';
 import { fetchTags } from './services/tagsService';
 import { fetchArticles, fetchArticleByUid } from './services/articlesService';
 import { fetchStats } from './services/statsService';
@@ -18,6 +20,8 @@ const router = createBrowserRouter([
     element: <HomePage />,
     loader: () => Promise.all([fetchTags(), fetchStats(), fetchPopularArticles()]),
     shouldRevalidate: () => false,
+    ErrorBoundary: RouteError,
+    HydrateFallback: RouteLoading,
   },
   {
     path: '/articles',
@@ -29,11 +33,15 @@ const router = createBrowserRouter([
       return Promise.all([fetchTags(), cached]);
     },
     shouldRevalidate: () => false,
+    ErrorBoundary: RouteError,
+    HydrateFallback: RouteLoading,
   },
   {
     path: '/articles/:uid',
     element: <ArticleDetailPage />,
     loader: ({ params }) => fetchArticleByUid(params.uid!),
+    ErrorBoundary: RouteError,
+    HydrateFallback: RouteLoading,
   },
   { path: '/profile',       element: <ProfilePage /> },
   { path: '/contact',       element: <ContactPage /> },

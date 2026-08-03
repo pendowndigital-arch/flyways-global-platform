@@ -1,5 +1,5 @@
 import { Article } from '../models/article';
-import { ENDPOINTS, ASSETS_BASE } from '../config/api';
+import { ENDPOINTS, ASSETS_BASE, fetchJson } from '../config/api';
 
 interface ApiPopularArticleRow {
   id: string;
@@ -10,6 +10,10 @@ interface ApiPopularArticleRow {
   reading_time: string;
   tags: string;
   popular: string;
+}
+
+interface ApiPopularArticlesResponse {
+  rows?: ApiPopularArticleRow[];
 }
 
 function parseTags(raw: string): string[] {
@@ -34,9 +38,9 @@ let _cache: Promise<Article[]> | null = null;
 
 export function fetchPopularArticles(): Promise<Article[]> {
   if (!_cache) {
-    _cache = fetch(ENDPOINTS.popularArticles)
-      .then((res) => res.json())
-      .then((data) => (data.rows ?? []).map(mapArticle));
+    _cache = fetchJson<ApiPopularArticlesResponse>(ENDPOINTS.popularArticles).then((data) =>
+      (data.rows ?? []).map(mapArticle)
+    );
   }
   return _cache;
 }

@@ -1,8 +1,13 @@
 import { Article, ArticleDetail, ApiArticleRow, ApiArticleDetail, ApiPager } from '../models/article';
-import { ENDPOINTS } from '../config/api';
+import { ENDPOINTS, fetchJson } from '../config/api';
 
 export interface ArticlesResponse {
   articles: Article[];
+  pager: ApiPager;
+}
+
+interface ApiArticlesResponse {
+  rows?: ApiArticleRow[];
   pager: ApiPager;
 }
 
@@ -46,12 +51,10 @@ export function fetchArticles(page = 0, filters: ArticleFilters = {}): Promise<A
   let url = `${ENDPOINTS.articles}&page=${page}`;
   if (filters.tag) url += `&tag=${encodeURIComponent(filters.tag)}`;
   if (filters.time) url += `&time=${encodeURIComponent(filters.time)}`;
-  return fetch(url)
-    .then((res) => res.json())
-    .then((data) => ({
-      articles: (data.rows ?? []).map(mapArticle),
-      pager: data.pager,
-    }));
+  return fetchJson<ApiArticlesResponse>(url).then((data) => ({
+    articles: (data.rows ?? []).map(mapArticle),
+    pager: data.pager,
+  }));
 }
 
 export async function fetchArticleByUid(uid: string): Promise<ArticleDetail | null> {
