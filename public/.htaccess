@@ -1,3 +1,8 @@
+AuthType Basic
+AuthName "Restricted"
+AuthUserFile /home/u979580017/domains/lavender-salmon-832388.hostingersite.com/public_html/.htpasswd
+Require valid-user
+
 Options -MultiViews
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
