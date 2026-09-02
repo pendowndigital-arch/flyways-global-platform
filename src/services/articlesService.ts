@@ -51,7 +51,7 @@ export function fetchArticles(page = 0, filters: ArticleFilters = {}): Promise<A
   let url = `${ENDPOINTS.articles}&page=${page}`;
   if (filters.tag) url += `&tag=${encodeURIComponent(filters.tag)}`;
   if (filters.time) url += `&time=${encodeURIComponent(filters.time)}`;
-  return fetchJson<ApiArticlesResponse>(url).then((data) => ({
+  return fetchJson<ApiArticlesResponse>(url, { auth: false }).then((data) => ({
     articles: (data.rows ?? []).map(mapArticle),
     pager: data.pager,
   }));

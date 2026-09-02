@@ -26,13 +26,25 @@ const router = createBrowserRouter([
   {
     path: '/articles',
     element: <ArticlesPage />,
-    loader: () => {
-      const cached = articlesState.articles
+    loader: ({ request }) => {
+      const url = new URL(request.url);
+      const tag = url.searchParams.get('tag') ?? '';
+      const time = url.searchParams.get('time') ?? '';
+      const isSameFilter = tag === articlesState.tag && time === articlesState.time;
+
+      const result = isSameFilter && articlesState.articles
         ? Promise.resolve({ articles: articlesState.articles, pager: articlesState.pager! })
-        : fetchArticles(0, { tag: articlesState.tag || undefined, time: articlesState.time || undefined });
-      return Promise.all([fetchTags(), cached]);
+        : fetchArticles(0, { tag: tag || undefined, time: time || undefined }).then((fresh) => {
+            articlesState.tag = tag;
+            articlesState.time = time;
+            articlesState.page = 0;
+            articlesState.articles = fresh.articles;
+            articlesState.pager = fresh.pager;
+            return fresh;
+          });
+
+      return Promise.all([fetchTags(), result]);
     },
-    shouldRevalidate: () => false,
     ErrorBoundary: RouteError,
     HydrateFallback: RouteLoading,
   },

@@ -1,26 +1,18 @@
-import { useSearchParams } from 'react-router-dom';
 import { Tag } from '../models/tag';
 
 interface RecommendedTagsProps {
   tags: Tag[];
+  selectedTag: string;
   onTagSelect: (name: string) => void;
 }
 
-export function RecommendedTags({ tags, onTagSelect }: RecommendedTagsProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedTag = searchParams.get('tag');
+export function RecommendedTags({ tags, selectedTag, onTagSelect }: RecommendedTagsProps) {
   const recommended = tags.filter((t) => t.priority);
 
   if (recommended.length === 0) return null;
 
   const handleClick = (name: string) => {
-    if (selectedTag === name) {
-      setSearchParams({});
-      onTagSelect('All');
-    } else {
-      setSearchParams({ tag: name });
-      onTagSelect(name);
-    }
+    onTagSelect(selectedTag === name ? 'All' : name);
   };
 
   return (

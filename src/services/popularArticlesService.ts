@@ -38,9 +38,9 @@ let _cache: Promise<Article[]> | null = null;
 
 export function fetchPopularArticles(): Promise<Article[]> {
   if (!_cache) {
-    _cache = fetchJson<ApiPopularArticlesResponse>(ENDPOINTS.popularArticles).then((data) =>
-      (data.rows ?? []).map(mapArticle)
-    );
+    _cache = fetchJson<ApiPopularArticlesResponse>(ENDPOINTS.popularArticles)
+      .then((data) => (data.rows ?? []).map(mapArticle))
+      .catch((err) => { _cache = null; throw err; });
   }
   return _cache;
 }

@@ -1,4 +1,4 @@
-import { isRouteErrorResponse, useRouteError, Link } from 'react-router-dom';
+import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 
 export function RouteError() {
   const error = useRouteError();
@@ -25,12 +25,12 @@ export function RouteError() {
           >
             Try again
           </button>
-          <Link
-            to="/"
+          <button
+            onClick={() => { window.location.href = '/'; }}
             className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
           >
             Go home
-          </Link>
+          </button>
         </div>
       </div>
     </div>

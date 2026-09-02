@@ -2,30 +2,41 @@ import { useState } from 'react';
 import { User as UserIcon, Mail, Phone, FileText, Pencil, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import type { User } from '../models/user';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?[\d\s\-(). ]{7,20}$/;
+// Country code (entered inside the braces, e.g. "+1") and local number
+// (always exactly 10 digits) are captured as separate fields.
+const DEFAULT_COUNTRY_CODE = '+91';
+const COUNTRY_CODE_RE = /^\+\d{1,3}$/;
+const PHONE_LOCAL_LENGTH = 10;
+const PHONE_RE = new RegExp(`^\\d{${PHONE_LOCAL_LENGTH}}$`);
+const BIO_MAX_LENGTH = 250;
+
+// Keeps only digits, capped at 3, always prefixed with "+" once non-empty.
+function sanitizeCountryCode(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 3);
+  return digits ? `+${digits}` : '';
+}
+
+// Splits a raw stored number (e.g. "12025551234") into country code + local
+// number; legacy numbers with no stored country code fall back to the default.
+function splitStoredPhone(raw: string): { countryCode: string; phone: string } {
+  const digits = raw.replace(/\D/g, '');
+  const local = digits.slice(-PHONE_LOCAL_LENGTH);
+  const codeDigits = digits.slice(0, digits.length - PHONE_LOCAL_LENGTH);
+  return { countryCode: codeDigits ? `+${codeDigits}` : DEFAULT_COUNTRY_CODE, phone: local };
+}
+
+// Formats a raw stored number for read-only display, e.g. "12025551234" -> "+1 2025551234".
+function formatStoredPhone(raw: string): string {
+  if (!raw.trim()) return '';
+  const { countryCode, phone } = splitStoredPhone(raw);
+  return `${countryCode} ${phone}`;
+}
 
 const inputCls = (error?: string) =>
   `w-full pl-9 pr-4 py-2.5 border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
     error ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:border-gray-400'
   }`;
-
-function Field({ label, icon: Icon, error, children }: {
-  label: string; icon: React.ElementType; error?: string; children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">{label}</p>
-      <div className="relative">
-        <Icon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-        {children}
-      </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </div>
-  );
-}
 
 function ReadField({ label, icon: Icon, value }: {
   label: string; icon: React.ElementType; value: string;
@@ -42,10 +53,14 @@ function ReadField({ label, icon: Icon, value }: {
 }
 
 export function ProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Omit<User, 'password'>>({ fullName: '', email: '', phoneNumber: '', description: '' });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [bio, setBio] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phone, setPhone] = useState('');
+  const [error, setError] = useState('');
+  const [countryCodeError, setCountryCodeError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (!user) {
@@ -66,45 +81,46 @@ export function ProfilePage() {
     .slice(0, 2);
 
   const handleEdit = () => {
-    setForm({
-      fullName: user.fullName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      description: user.description ?? '',
-    });
-    setErrors({});
+    setBio(user.description ?? '');
+    const split = splitStoredPhone(user.phoneNumber ?? '');
+    setCountryCode(split.countryCode);
+    setPhone(split.phone);
+    setError('');
+    setCountryCodeError('');
+    setPhoneError('');
     setEditing(true);
   };
 
   const handleCancel = () => {
     setEditing(false);
-    setErrors({});
-  };
-
-  const validate = (): boolean => {
-    const errs: Record<string, string> = {};
-    if (!form.fullName.trim()) errs.fullName = 'Full name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!EMAIL_RE.test(form.email)) errs.email = 'Enter a valid email address';
-    if (!form.phoneNumber.trim()) errs.phoneNumber = 'Mobile number is required';
-    else if (!PHONE_RE.test(form.phoneNumber)) errs.phoneNumber = 'Enter a valid phone number';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+    setError('');
+    setCountryCodeError('');
+    setPhoneError('');
   };
 
   const handleUpdate = async () => {
-    if (!validate()) return;
+    const trimmedCode = countryCode.trim();
+    const trimmedPhone = phone.trim();
+    let hasError = false;
+    if (!trimmedCode) { setCountryCodeError('Required'); hasError = true; }
+    else if (!COUNTRY_CODE_RE.test(trimmedCode)) { setCountryCodeError('Invalid'); hasError = true; }
+    else setCountryCodeError('');
+    if (!trimmedPhone) { setPhoneError('Mobile number is required'); hasError = true; }
+    else if (!PHONE_RE.test(trimmedPhone)) { setPhoneError('Enter a valid 10-digit mobile number'); hasError = true; }
+    else setPhoneError('');
+    if (hasError) return;
+
     setSaving(true);
+    setError('');
     try {
-      await updateUser({ ...user, ...form });
+      await updateProfile({ bio: bio.trim(), phoneNumber: `${trimmedCode.replace(/\D/g, '')}${trimmedPhone}` });
       setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
   };
-
-  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.value }));
 
   return (
     <Layout>
@@ -141,76 +157,79 @@ export function ProfilePage() {
             </div>
 
             <div className="border-t border-gray-100 pt-6">
+              <div className="space-y-5">
+                {/* Full name and email are managed server-side and are always read-only here. */}
+                <ReadField label="Full Name" icon={UserIcon} value={user.fullName} />
+                <ReadField label="Email ID" icon={Mail} value={user.email} />
 
-              {/* Read view */}
-              {!editing && (
-                <div className="space-y-5">
-                  <ReadField label="Full Name" icon={UserIcon} value={user.fullName} />
-                  <ReadField label="Email ID" icon={Mail} value={user.email} />
-                  <ReadField label="Mobile Number" icon={Phone} value={user.phoneNumber} />
+                {!editing ? (
+                  <ReadField label="Mobile Number" icon={Phone} value={formatStoredPhone(user.phoneNumber)} />
+                ) : (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">Mobile Number</p>
+                    <div className="flex gap-2">
+                      <div className={`flex items-center border rounded-lg transition-colors ${
+                        countryCodeError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}>
+                        <span className="pl-2.5 text-gray-400 text-sm select-none">(</span>
+                        <input
+                          type="text" inputMode="tel" value={countryCode}
+                          onChange={e => setCountryCode(sanitizeCountryCode(e.target.value))}
+                          placeholder={DEFAULT_COUNTRY_CODE} maxLength={4}
+                          className="w-12 py-2.5 text-sm text-gray-900 text-center bg-transparent focus:outline-none"
+                        />
+                        <span className="pr-2.5 text-gray-400 text-sm select-none">)</span>
+                      </div>
+                      <div className="relative flex-1">
+                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <input
+                          type="tel" inputMode="numeric" value={phone}
+                          onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, PHONE_LOCAL_LENGTH))}
+                          placeholder="2025551234" maxLength={PHONE_LOCAL_LENGTH} autoComplete="tel"
+                          className={inputCls(phoneError)}
+                        />
+                      </div>
+                    </div>
+                    {(countryCodeError || phoneError) && (
+                      <p className="mt-1 text-xs text-red-500">{countryCodeError ? `Country code: ${countryCodeError}` : phoneError}</p>
+                    )}
+                  </div>
+                )}
+
+                {!editing ? (
                   <ReadField label="About You" icon={FileText} value={user.description ?? ''} />
-                </div>
-              )}
-
-              {/* Edit view */}
-              {editing && (
-                <div className="space-y-4">
-                  <Field label="Full Name" icon={UserIcon} error={errors.fullName}>
-                    <input
-                      type="text" value={form.fullName} onChange={set('fullName')}
-                      placeholder="e.g. Arjun Sharma" autoComplete="name"
-                      className={inputCls(errors.fullName)}
-                    />
-                  </Field>
-
-                  <Field label="Email ID" icon={Mail} error={errors.email}>
-                    <input
-                      type="email" value={form.email} onChange={set('email')}
-                      placeholder="you@example.com" autoComplete="email"
-                      className={inputCls(errors.email)}
-                    />
-                  </Field>
-
-                  <Field label="Mobile Number" icon={Phone} error={errors.phoneNumber}>
-                    <input
-                      type="tel" value={form.phoneNumber} onChange={set('phoneNumber')}
-                      placeholder="+91 98765 43210" autoComplete="tel"
-                      className={inputCls(errors.phoneNumber)}
-                    />
-                  </Field>
-
+                ) : (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">About You</p>
                     <div className="relative">
                       <FileText size={15} className="absolute left-3 top-3.5 text-gray-400 pointer-events-none" />
                       <textarea
-                        value={form.description} onChange={set('description')}
+                        value={bio} onChange={e => setBio(e.target.value)}
                         placeholder='e.g. "BTech CS graduate with 3.5 years experience and IELTS 7"'
-                        rows={3}
-                        className={`${inputCls(errors.description)} resize-none`}
+                        rows={3} maxLength={BIO_MAX_LENGTH}
+                        className={`${inputCls(error)} resize-none`}
                       />
                     </div>
-                    {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
-                  </div>
+                    {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
 
-                  {/* Actions */}
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button" onClick={handleCancel}
-                      className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <X size={15} /> Cancel
-                    </button>
-                    <button
-                      type="button" onClick={handleUpdate} disabled={saving}
-                      className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {saving ? 'Updating…' : 'Update'}
-                    </button>
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="button" onClick={handleCancel}
+                        className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <X size={15} /> Cancel
+                      </button>
+                      <button
+                        type="button" onClick={handleUpdate} disabled={saving}
+                        className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {saving ? 'Updating…' : 'Update'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-
+                )}
+              </div>
             </div>
           </div>
         </div>

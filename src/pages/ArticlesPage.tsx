@@ -83,6 +83,7 @@ export function ArticlesPage() {
     <Layout rightPanel={
       <RecommendedTags
         tags={tags}
+        selectedTag={selectedTag || 'All'}
         onTagSelect={(tag) => fetchFiltered(tag === 'All' ? '' : tag, dateFilter)}
       />
     }>

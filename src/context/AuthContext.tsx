@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from '../models/user';
-import { updateProfile } from '../services/userService';
+import { getCurrentUser, updateProfile as updateProfileApi } from '../services/userService';
+import { logoutUser } from '../services/authService';
+import { getToken, clearToken } from '../config/api';
 
 export type AuthModalMode = 'signin' | 'signup';
 
@@ -8,8 +10,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   signIn: (user: User) => void;
-  signOut: () => void;
-  updateUser: (user: User) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: { bio: string; phoneNumber: string }) => Promise<void>;
   showSignInModal: boolean;
   modalMode: AuthModalMode;
   openSignInModal: (mode?: AuthModalMode) => void;
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modalMode, setModalMode] = useState<AuthModalMode>('signin');
 
   useEffect(() => {
+    // Paint the cached profile immediately, then reconcile with the server.
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -33,6 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('user');
       }
     }
+
+    if (!getToken()) return;
+    getCurrentUser()
+      .then(fresh => {
+        setUser(fresh);
+        localStorage.setItem('user', JSON.stringify(fresh));
+      })
+      .catch(() => {
+        setUser(null);
+        localStorage.removeItem('user');
+        clearToken();
+      });
   }, []);
 
   const signIn = (userData: User) => {
@@ -40,13 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error('Failed to notify server of logout:', error);
+    }
     setUser(null);
     localStorage.removeItem('user');
+    clearToken();
   };
 
-  const updateUser = async (updated: User) => {
-    const result = await updateProfile(updated);
+  const updateProfile = async (updates: { bio: string; phoneNumber: string }) => {
+    const result = await updateProfileApi(updates);
     setUser(result);
     localStorage.setItem('user', JSON.stringify(result));
   };
@@ -66,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       signIn,
       signOut,
-      updateUser,
+      updateProfile,
       showSignInModal,
       modalMode,
       openSignInModal,

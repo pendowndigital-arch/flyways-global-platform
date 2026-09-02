@@ -5,7 +5,7 @@ let _cache: Promise<Tag[]> | null = null;
 
 export function fetchTags(): Promise<Tag[]> {
   if (!_cache) {
-    _cache = fetchJson<ApiCategory[]>(ENDPOINTS.categories)
+    _cache = fetchJson<ApiCategory[]>(ENDPOINTS.categories, { auth: false })
       .then((data) =>
         data.map((c) => ({
           id: c.tid,
@@ -13,7 +13,8 @@ export function fetchTags(): Promise<Tag[]> {
           priority: c.priority === '1' || c.priority === true,
           image: c.image ? `${ASSETS_BASE}${c.image}` : '',
         }))
-      );
+      )
+      .catch((err) => { _cache = null; throw err; });
   }
   return _cache;
 }

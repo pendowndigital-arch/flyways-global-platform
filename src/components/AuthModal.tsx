@@ -2,12 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { X, User as UserIcon, Mail, Phone, Lock, ChevronRight, Check, Sparkles, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { AuthModalMode } from '../context/AuthContext';
-import type { User } from '../models/user';
+import { registerUser, loginUser, forgotPassword, ApiError } from '../services/authService';
+import { getCurrentUser } from '../services/userService';
+import { LegalModal } from './LegalModal';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?[\d\s\-(). ]{7,20}$/;
+// Country code (entered inside the braces, e.g. "+1") and local number
+// (always exactly 10 digits) are captured as separate fields.
+const DEFAULT_COUNTRY_CODE = '+91';
+const COUNTRY_CODE_RE = /^\+\d{1,3}$/;
+const PHONE_LOCAL_LENGTH = 10;
+const PHONE_RE = new RegExp(`^\\d{${PHONE_LOCAL_LENGTH}}$`);
+const NAME_MAX_LENGTH = 100;
+
+// Keeps only digits, capped at 3, always prefixed with "+" once non-empty.
+function sanitizeCountryCode(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 3);
+  return digits ? `+${digits}` : '';
+}
+// At least one lowercase, one uppercase and one digit, 8+ characters.
+const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PASSWORD_HINT = 'At least 8 characters, with uppercase, lowercase and a number';
 
 const DEFAULT_STATEMENTS = [
   'BTech Computer Science graduate with 3.5 years experience and IELTS 7',
@@ -33,18 +50,6 @@ function saveStatement(stmt: string) {
   const list = loadStatements();
   if (!list.includes(stmt))
     localStorage.setItem('flyways_preparedStatements', JSON.stringify([...list, stmt]));
-}
-
-function loadUsers(): User[] {
-  try { return JSON.parse(localStorage.getItem('flyways_users') ?? ''); } catch {}
-  return [];
-}
-
-function saveUser(user: User) {
-  const users = loadUsers();
-  const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
-  if (idx >= 0) users[idx] = user; else users.push(user);
-  localStorage.setItem('flyways_users', JSON.stringify(users));
 }
 
 // ── Shared styles ────────────────────────────────────────────────────────────
@@ -81,13 +86,17 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
+type ModalView = AuthModalMode | 'forgot';
+
 export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
   const { signIn } = useAuth();
-  const [mode, setMode] = useState<AuthModalMode>(defaultMode);
+  const [mode, setMode] = useState<ModalView>(defaultMode);
   const [step, setStep] = useState(1);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
   const [description, setDescription] = useState('');
@@ -99,6 +108,15 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [signInError, setSignInError] = useState('');
+
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [isSendingForgot, setIsSendingForgot] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   const descRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -128,19 +146,52 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
     };
   }, [onClose]);
 
-  const switchMode = (m: AuthModalMode) => { setMode(m); setStep(1); setErrors({}); };
+  const switchMode = (m: ModalView) => {
+    setMode(m); setStep(1); setErrors({}); setSuccessMessage(''); setSignInError('');
+    setForgotMessage(''); setForgotError('');
+  };
 
-  const handleSignIn = () => {
+  const handleForgotPassword = async () => {
+    const trimmed = forgotEmail.trim();
+    if (!trimmed) { setErrors({ forgotEmail: 'Email is required' }); return; }
+    if (!EMAIL_RE.test(trimmed)) { setErrors({ forgotEmail: 'Enter a valid email address' }); return; }
+
+    setErrors({});
+    setForgotError('');
+    setIsSendingForgot(true);
+    try {
+      const message = await forgotPassword(trimmed);
+      setForgotMessage(message);
+    } catch (err) {
+      setForgotMessage('');
+      setForgotError(err instanceof ApiError ? err.message : 'Unable to send reset instructions. Please try again.');
+    } finally {
+      setIsSendingForgot(false);
+    }
+  };
+
+  const handleSignIn = async () => {
     const errs: Record<string, string> = {};
     if (!siEmail.trim()) errs.siEmail = 'Email is required';
     else if (!EMAIL_RE.test(siEmail)) errs.siEmail = 'Enter a valid email address';
     if (!siPassword) errs.siPassword = 'Password is required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    const found = loadUsers().find(u => u.email.toLowerCase() === siEmail.trim().toLowerCase());
-    if (!found) { setErrors({ siEmail: 'No account found with this email. Please sign up.' }); return; }
-    if (found.password !== siPassword) { setErrors({ siPassword: 'Incorrect password.' }); return; }
-    signIn(found);
-    onClose();
+
+    setSignInError('');
+    setIsSigningIn(true);
+    try {
+      await loginUser(siEmail.trim(), siPassword);
+      const profile = await getCurrentUser();
+      setSuccessMessage('');
+      signIn(profile);
+      onClose();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.';
+      setSuccessMessage('');
+      setSignInError(message);
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   const validateStep1 = (): boolean => {
@@ -148,11 +199,14 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
     if (!name.trim()) errs.name = 'Full name is required';
     if (!email.trim()) errs.email = 'Email is required';
     else if (!EMAIL_RE.test(email)) errs.email = 'Enter a valid email address';
+    if (!countryCode.trim()) errs.countryCode = 'Required';
+    else if (!COUNTRY_CODE_RE.test(countryCode.trim())) errs.countryCode = 'Invalid';
     if (!phone.trim()) errs.phone = 'Mobile number is required';
-    else if (!PHONE_RE.test(phone)) errs.phone = 'Enter a valid phone number';
+    else if (!PHONE_RE.test(phone.trim())) errs.phone = 'Enter a valid 10-digit mobile number';
     if (!password) errs.password = 'Password is required';
-    else if (password.length < 8) errs.password = 'Password must be at least 8 characters';
+    else if (!PASSWORD_RE.test(password)) errs.password = PASSWORD_HINT;
     if (!confirmPassword) errs.confirmPassword = 'Please confirm your password';
+    else if (!PASSWORD_RE.test(confirmPassword)) errs.confirmPassword = PASSWORD_HINT;
     else if (password !== confirmPassword) errs.confirmPassword = 'Passwords do not match';
     if (!consent) errs.consent = 'You must agree to the privacy policy to continue';
     setErrors(errs);
@@ -161,22 +215,55 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
 
   const handleProceed = () => { if (validateStep1()) { setErrors({}); setStep(2); } };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!description.trim()) { setErrors({ description: 'Please describe yourself to continue' }); return; }
     const trimmed = description.trim();
     if (!loadStatements().includes(trimmed)) saveStatement(trimmed);
-    const user = { fullName: name.trim(), email: email.trim(), phoneNumber: phone.trim(), password, description: trimmed };
-    saveUser(user);
-    signIn(user);
-    onClose();
+
+    setIsSubmitting(true);
+    try {
+      const message = await registerUser({
+        name: email.trim(),
+        mail: email.trim(),
+        password,
+        field_fullname: name.trim(),
+        field_phone_number: `${countryCode.replace(/\D/g, '')}${phone.trim()}`,
+        field_bio: trimmed,
+      });
+      setSiEmail(email.trim());
+      setSiPassword('');
+      setMode('signin');
+      setStep(1);
+      setErrors({});
+      setSignInError('');
+      setSuccessMessage(message);
+    } catch (err) {
+      if (err instanceof ApiError && err.details) {
+        const mapped: Record<string, string> = {};
+        if (err.details.mail) mapped.email = err.details.mail[0];
+        if (err.details.name) mapped.email = err.details.name[0];
+        if (err.details.password) mapped.password = err.details.password[0];
+        if (err.details.field_phone_number) mapped.phone = err.details.field_phone_number[0];
+        if (err.details.field_fullname) mapped.name = err.details.field_fullname[0];
+        if (Object.keys(mapped).length === 0) mapped.description = err.message;
+        setErrors(mapped);
+        if (mapped.email || mapped.password || mapped.phone || mapped.name) setStep(1);
+      } else {
+        setErrors({ description: err instanceof Error ? err.message : 'Registration failed. Please try again.' });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isSignup = mode === 'signup';
   const title = isSignup
     ? (step === 1 ? 'Create Your Account' : 'Tell us about yourself')
+    : mode === 'forgot' ? 'Reset your password'
     : 'Sign in to Flyways Global';
   const subtitle = isSignup
     ? (step === 1 ? 'Join thousands navigating global mobility.' : 'Help us personalise your experience.')
+    : mode === 'forgot' ? "Enter your email and we'll send you reset instructions."
     : 'Access exclusive content on study, work, and residence abroad.';
 
   return (
@@ -201,6 +288,16 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
           {/* Sign In */}
           {mode === 'signin' && (
             <div className="space-y-4">
+              {successMessage && (
+                <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                  {successMessage}
+                </p>
+              )}
+              {signInError && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  {signInError}
+                </p>
+              )}
               <Field id="si-email" label="Email ID" icon={Mail} error={errors.siEmail}>
                 <input
                   id="si-email" type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)}
@@ -214,13 +311,53 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
                   id="si-password" type="password" value={siPassword} onChange={e => setSiPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSignIn()}
                   placeholder="Enter your password" autoComplete="current-password"
-                  className={inputCls(errors.siPassword)}
+                  className={inputCls(errors.siPassword || signInError)}
                 />
               </Field>
-              <button onClick={handleSignIn} className={`w-full ${primaryBtnCls}`}>Sign In</button>
+              <div className="flex justify-end -mt-2">
+                <button type="button" onClick={() => { switchMode('forgot'); setForgotEmail(siEmail); }}
+                  className="text-xs text-blue-600 hover:underline font-medium">
+                  Forgot password?
+                </button>
+              </div>
+              <button onClick={handleSignIn} disabled={isSigningIn} className={`w-full ${primaryBtnCls} disabled:opacity-60 disabled:cursor-not-allowed`}>
+                {isSigningIn ? 'Signing in…' : 'Sign In'}
+              </button>
               <p className="text-center text-sm text-gray-400">
                 Don't have an account?{' '}
                 <button onClick={() => switchMode('signup')} className="text-blue-600 hover:underline font-medium">Sign Up</button>
+              </p>
+            </div>
+          )}
+
+          {/* Forgot Password */}
+          {mode === 'forgot' && (
+            <div className="space-y-4">
+              {forgotMessage && (
+                <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                  {forgotMessage}
+                </p>
+              )}
+              {forgotError && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  {forgotError}
+                </p>
+              )}
+              <Field id="fp-email" label="Email ID" icon={Mail} error={errors.forgotEmail}>
+                <input
+                  id="fp-email" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                  placeholder="you@example.com" autoComplete="email" autoFocus
+                  className={inputCls(errors.forgotEmail)}
+                />
+              </Field>
+              <button onClick={handleForgotPassword} disabled={isSendingForgot} className={`w-full ${primaryBtnCls} disabled:opacity-60 disabled:cursor-not-allowed`}>
+                {isSendingForgot ? 'Sending…' : 'Send Reset Instructions'}
+              </button>
+              <p className="text-center text-sm text-gray-400">
+                <button onClick={() => switchMode('signin')} className="text-blue-600 hover:underline font-medium inline-flex items-center gap-1">
+                  <ArrowLeft size={13} /> Back to Sign In
+                </button>
               </p>
             </div>
           )}
@@ -241,22 +378,44 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
               <Field id="su-name" label="Full Name" icon={UserIcon} error={errors.name}>
                 <input id="su-name" type="text" value={name} onChange={e => setName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleProceed()}
-                  placeholder="e.g. Arjun Sharma" autoComplete="name" className={inputCls(errors.name)} />
+                  placeholder="e.g. Arjun Sharma" maxLength={NAME_MAX_LENGTH} autoComplete="name" className={inputCls(errors.name)} />
               </Field>
               <Field id="su-email" label="Email ID" icon={Mail} error={errors.email}>
                 <input id="su-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleProceed()}
                   placeholder="you@example.com" autoComplete="email" className={inputCls(errors.email)} />
               </Field>
-              <Field id="su-phone" label="Mobile Number" icon={Phone} error={errors.phone}>
-                <input id="su-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleProceed()}
-                  placeholder="+91 98765 43210" autoComplete="tel" className={inputCls(errors.phone)} />
-              </Field>
+              <div>
+                <label htmlFor="su-phone" className="block text-xs font-semibold text-gray-600 mb-1.5 tracking-wide">Mobile Number</label>
+                <div className="flex gap-2">
+                  <div className={`flex items-center border rounded-lg transition-colors ${
+                    errors.countryCode ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                  }`}>
+                    <span className="pl-2.5 text-gray-400 text-sm select-none">(</span>
+                    <input id="su-country-code" type="text" inputMode="tel" value={countryCode}
+                      onChange={e => setCountryCode(sanitizeCountryCode(e.target.value))}
+                      onKeyDown={e => e.key === 'Enter' && handleProceed()}
+                      placeholder={DEFAULT_COUNTRY_CODE} maxLength={4}
+                      className="w-12 py-2.5 text-sm text-gray-900 text-center bg-transparent focus:outline-none" />
+                    <span className="pr-2.5 text-gray-400 text-sm select-none">)</span>
+                  </div>
+                  <div className="relative flex-1">
+                    <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input id="su-phone" type="tel" inputMode="numeric" value={phone}
+                      onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, PHONE_LOCAL_LENGTH))}
+                      onKeyDown={e => e.key === 'Enter' && handleProceed()}
+                      placeholder="2025551234" maxLength={PHONE_LOCAL_LENGTH} autoComplete="tel"
+                      className={inputCls(errors.phone)} />
+                  </div>
+                </div>
+                {(errors.countryCode || errors.phone) && (
+                  <p className="mt-1 text-xs text-red-500">{errors.countryCode ? `Country code: ${errors.countryCode}` : errors.phone}</p>
+                )}
+              </div>
               <Field id="su-password" label="Password" icon={Lock} error={errors.password}>
                 <input id="su-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleProceed()}
-                  placeholder="Min. 8 characters" autoComplete="new-password" className={inputCls(errors.password)} />
+                  placeholder={PASSWORD_HINT} autoComplete="new-password" className={inputCls(errors.password)} />
               </Field>
               <Field id="su-confirm-password" label="Confirm Password" icon={Lock} error={errors.confirmPassword}>
                 <input id="su-confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
@@ -275,7 +434,7 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
                   </button>
                   <span className="text-xs text-gray-600 leading-relaxed">
                     I agree to the{' '}
-                    <a href="#" className="text-blue-600 hover:underline font-medium">Privacy Policy</a>
+                    <button type="button" onClick={() => setShowPrivacyPolicy(true)} className="text-blue-600 hover:underline font-medium">Privacy Policy</button>
                     {' '}and consent to processing of my personal information (Email &amp; Phone) in accordance with data protection regulations.
                   </span>
                 </label>
@@ -332,12 +491,13 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
               </p>
 
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setStep(1); setErrors({}); }}
-                  className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                <button type="button" disabled={isSubmitting} onClick={() => { setStep(1); setErrors({}); }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                   <ArrowLeft size={15} /> Back
                 </button>
-                <button type="button" onClick={handleSubmit} className={`flex-1 ${primaryBtnCls}`}>
-                  Submit &amp; Get Started
+                <button type="button" onClick={handleSubmit} disabled={isSubmitting}
+                  className={`flex-1 ${primaryBtnCls} disabled:opacity-60 disabled:cursor-not-allowed`}>
+                  {isSubmitting ? 'Creating account…' : 'Submit & Get Started'}
                 </button>
               </div>
             </div>
@@ -345,6 +505,8 @@ export function AuthModal({ defaultMode, onClose }: AuthModalProps) {
 
         </div>
       </div>
+
+      {showPrivacyPolicy && <LegalModal doc="privacy" onClose={() => setShowPrivacyPolicy(false)} />}
     </div>
   );
 }
