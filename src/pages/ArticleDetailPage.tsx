@@ -157,6 +157,27 @@ export function ArticleDetailPage() {
                   </div>
                 </div>
               </footer>
+
+              {/* Sources */}
+              {article.sources.length > 0 && (
+                <div className="px-8 py-5 border-t border-gray-100 text-left">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Sources</p>
+                  <ul className="space-y-1">
+                    {article.sources.map((src) => (
+                      <li key={src}>
+                        <a
+                          href={src}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline break-all"
+                        >
+                          {src}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </article>

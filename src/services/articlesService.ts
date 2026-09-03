@@ -38,12 +38,13 @@ function mapArticle(row: ApiArticleRow): Article {
 function mapArticleDetail(row: ApiArticleDetail): ArticleDetail {
   return {
     id: row.id,
-    uid: row.uid,
+    uid: row.uuid,
     title: row.title,
     image: row.image,
     body: row.body,
     readTime: row.reading_time,
     tags: parseTags(row.tags),
+    sources: row.content_source ?? [],
   };
 }
 

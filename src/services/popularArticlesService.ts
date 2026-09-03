@@ -3,7 +3,7 @@ import { ENDPOINTS, ASSETS_BASE, fetchJson } from '../config/api';
 
 interface ApiPopularArticleRow {
   id: string;
-  uid: string;
+  did: string;
   title: string;
   summary: string;
   image: string;
@@ -24,7 +24,7 @@ function mapArticle(row: ApiPopularArticleRow): Article {
   const tags = parseTags(row.tags);
   return {
     id: row.id,
-    uid: row.uid,
+    uid: row.did,
     title: row.title,
     excerpt: row.summary,
     image: row.image ? `${ASSETS_BASE}${row.image}` : '',

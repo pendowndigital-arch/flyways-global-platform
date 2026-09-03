@@ -20,6 +20,7 @@ export interface ArticleDetail {
   body: string;      // HTML — from API `body`
   readTime: string;  // from API `reading_time`
   tags: string[];
+  sources: string[]; // from API `content_source`
 }
 
 // Raw API shapes
@@ -36,12 +37,13 @@ export interface ApiArticleRow {
 
 export interface ApiArticleDetail {
   id: string;
-  uid: string;
+  uuid: string;
   title: string;
   image: string;
   body: string;
   reading_time: string;
   tags: string;
+  content_source?: string[];
 }
 
 export interface ApiPager {
