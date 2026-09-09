@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import type { User } from '../models/user';
 import { getCurrentUser, updateProfile as updateProfileApi } from '../services/userService';
 import { logoutUser } from '../services/authService';
-import { getToken, clearToken } from '../config/api';
+import { getToken, clearToken, clearRefreshToken } from '../config/api';
 
 export type AuthModalMode = 'signin' | 'signup';
 
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         localStorage.removeItem('user');
         clearToken();
+        clearRefreshToken();
       });
   }, []);
 
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     clearToken();
+    clearRefreshToken();
   };
 
   const updateProfile = async (updates: { bio: string; phoneNumber: string }) => {

@@ -5,6 +5,7 @@ export const ASSETS_BASE = BASE.replace(/\/api$/, '');
 export const CLIENT_ID = 'flywaysglobal_spa';
 
 const TOKEN_KEY = 'flyways_access_token';
+const REFRESH_TOKEN_KEY = 'flyways_refresh_token';
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -16,6 +17,18 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 // Merged into every authenticated request once a login has produced a token.
@@ -33,8 +46,10 @@ export const ENDPOINTS = {
   register: `${BASE}/user/register`,
   login: `${BASE}/user/login`,
   forgotPassword: `${BASE}/user/password/forgot`,
+  resetPassword: `${BASE}/user/password/reset`,
   logout: `${BASE}/user/logout`,
   me: `${BASE}/user/me`,
+  refreshToken: `${ASSETS_BASE}/oauth/token`,
 };
 
 // Fetches `url` and parses it as JSON, throwing a `Response` (not a generic

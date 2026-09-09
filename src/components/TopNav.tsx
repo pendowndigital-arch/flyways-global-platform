@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 const navItems: { path: string; label: string; icon: LucideIcon }[] = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/articles', label: 'Articles', icon: FileText },
-  { path: '/profile', label: 'Profile', icon: User },
   { path: '/contact', label: 'Contact Us', icon: Mail },
   { path: '/about', label: 'About Us', icon: Info },
 ];

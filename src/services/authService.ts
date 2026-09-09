@@ -1,4 +1,4 @@
-import { ENDPOINTS, CLIENT_ID, setToken, authHeaders } from '../config/api';
+import { ENDPOINTS, CLIENT_ID, setToken, authHeaders, getRefreshToken, setRefreshToken } from '../config/api';
 
 export interface RegisterPayload {
   name: string;
@@ -63,12 +63,56 @@ export async function loginUser(username: string, password: string): Promise<Log
   if (!token) throw new ApiError('Login succeeded but no access token was returned.');
 
   setToken(token);
+  if (data.data.refresh_token) setRefreshToken(data.data.refresh_token);
   return {
     accessToken: token,
     tokenType: data.data.token_type ?? 'Bearer',
     expiresIn: data.data.expires_in,
     refreshToken: data.data.refresh_token,
   };
+}
+
+// Drupal's simple_oauth /oauth/token grant endpoint; takes form-encoded
+// params (not JSON) and returns a fresh access token plus a rotated
+// refresh token, which must both replace what's stored.
+async function requestNewAccessToken(): Promise<string> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new ApiError('No refresh token available.');
+
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: CLIENT_ID,
+    refresh_token: refreshToken,
+  });
+
+  const res = await fetch(ENDPOINTS.refreshToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body,
+  });
+  if (!res.ok) throw await toApiError(res);
+
+  const data = await res.json();
+  const token = data.access_token;
+  if (!token) throw new ApiError('Token refresh succeeded but no access token was returned.');
+
+  setToken(token);
+  if (data.refresh_token) setRefreshToken(data.refresh_token);
+  return token;
+}
+
+let pendingRefresh: Promise<string> | null = null;
+
+// Single choke point for token refresh: callers that fire around the same
+// time (profile page load, an edit's pre-save refresh) share one in-flight
+// request instead of each issuing their own /oauth/token call.
+export function refreshAccessToken(): Promise<string> {
+  if (!pendingRefresh) {
+    pendingRefresh = requestNewAccessToken().finally(() => {
+      pendingRefresh = null;
+    });
+  }
+  return pendingRefresh;
 }
 
 export async function forgotPassword(mail: string): Promise<string> {
@@ -82,6 +126,19 @@ export async function forgotPassword(mail: string): Promise<string> {
   let body: { message?: string } = {};
   try { body = await res.json(); } catch { /* no JSON body */ }
   return body.message || 'If an account exists for that email, password reset instructions have been sent.';
+}
+
+export async function resetPassword(token: string, password: string): Promise<string> {
+  const res = await fetch(ENDPOINTS.resetPassword, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) throw await toApiError(res);
+
+  let body: { message?: string } = {};
+  try { body = await res.json(); } catch { /* no JSON body */ }
+  return body.message || 'Your password has been reset. Please sign in with your new password.';
 }
 
 export async function logoutUser(): Promise<void> {

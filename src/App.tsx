@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { HomePage } from './components/HomePage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
     HydrateFallback: RouteLoading,
   },
   { path: '/profile',       element: <ProfilePage /> },
+  { path: '/password/reset/:token', element: <ResetPasswordPage /> },
   { path: '/contact',       element: <ContactPage /> },
   { path: '/about',         element: <AboutPage /> },
 ]);

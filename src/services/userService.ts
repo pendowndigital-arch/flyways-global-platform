@@ -1,5 +1,5 @@
 import { ENDPOINTS, authHeaders, getToken } from '../config/api';
-import { toApiError } from './authService';
+import { toApiError, refreshAccessToken } from './authService';
 import type { User } from '../models/user';
 
 interface UserApiBody {
@@ -42,6 +42,7 @@ export async function getCurrentUser(): Promise<User> {
 // field is managed elsewhere.
 export async function updateProfile(updates: { bio: string; phoneNumber: string }): Promise<User> {
   requireToken();
+  await refreshAccessToken();
   const res = await fetch(ENDPOINTS.me, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },

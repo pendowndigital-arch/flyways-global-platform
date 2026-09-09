@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User as UserIcon, Mail, Phone, FileText, Pencil, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { refreshAccessToken } from '../services/authService';
 
 // Country code (entered inside the braces, e.g. "+1") and local number
 // (always exactly 10 digits) are captured as separate fields.
@@ -62,6 +63,15 @@ export function ProfilePage() {
   const [countryCodeError, setCountryCodeError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [saving, setSaving] = useState(false);
+  const didRefresh = useRef(false);
+
+  // Keeps the access token fresh for the profile page specifically; the
+  // profile data itself is already loaded once, app-wide, by AuthContext.
+  useEffect(() => {
+    if (didRefresh.current) return;
+    didRefresh.current = true;
+    refreshAccessToken().catch(() => { /* not signed in, or refresh token expired; edits will surface the error */ });
+  }, []);
 
   if (!user) {
     return (
