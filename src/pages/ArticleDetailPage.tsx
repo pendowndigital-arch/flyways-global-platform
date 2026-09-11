@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLoaderData } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useLoaderData } from 'react-router-dom';
 import { ArrowLeft, Clock, Tag, Link2, Check, Lock } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -8,7 +8,8 @@ import { ArticleDetail } from '../models/article';
 export function ArticleDetailPage() {
   const article = useLoaderData() as ArticleDetail | null;
   const navigate = useNavigate();
-  const { isAuthenticated, openSignInModal } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -75,7 +76,7 @@ export function ArticleDetailPage() {
                     Create a free account or sign in to access the full article and all exclusive content on Flyways Global.
                   </p>
                   <button
-                    onClick={() => openSignInModal('signin')}
+                    onClick={() => navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
                     className="px-7 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95"
                   >
                     Sign In / Sign Up

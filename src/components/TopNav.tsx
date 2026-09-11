@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, User, Home, FileText, Mail, Info, ChevronDown, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,18 +10,21 @@ const navItems: { path: string; label: string; icon: LucideIcon }[] = [
   { path: '/about', label: 'About Us', icon: Info },
 ];
 
-interface TopNavProps {
-  onSignInClick: () => void;
-}
-
-export function TopNav({ onSignInClick }: TopNavProps) {
+export function TopNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAuthenticated, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
+  const loginLink = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`;
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   useEffect(() => {
     setMobileOpen(false);
@@ -90,7 +93,7 @@ export function TopNav({ onSignInClick }: TopNavProps) {
                       My Profile
                     </Link>
                     <hr className="my-1 border-gray-100" />
-                    <button onClick={signOut} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                       <LogOut size={16} />
                       Sign Out
                     </button>
@@ -98,9 +101,9 @@ export function TopNav({ onSignInClick }: TopNavProps) {
                 )}
               </div>
             ) : (
-              <button onClick={onSignInClick} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95">
+              <Link to={loginLink} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-md hover:shadow-blue-200 transition-all duration-200 active:scale-95">
                 Sign In
-              </button>
+              </Link>
             )}
           </div>
 
@@ -133,15 +136,15 @@ export function TopNav({ onSignInClick }: TopNavProps) {
                   {avatar}
                   <span className="text-sm font-medium text-gray-700">{user?.fullName}</span>
                 </div>
-                <button onClick={() => { signOut(); setMobileOpen(false); }} className="flex items-center gap-1 text-sm text-red-600">
+                <button onClick={() => { handleSignOut(); setMobileOpen(false); }} className="flex items-center gap-1 text-sm text-red-600">
                   <LogOut size={16} />
                   Sign Out
                 </button>
               </div>
             ) : (
-              <button onClick={() => { onSignInClick(); setMobileOpen(false); }} className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+              <Link to={loginLink} onClick={() => setMobileOpen(false)} className="block w-full text-center py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
                 Sign In
-              </button>
+              </Link>
             )}
           </div>
         </div>

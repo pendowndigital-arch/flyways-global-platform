@@ -4,26 +4,18 @@ import { getCurrentUser, updateProfile as updateProfileApi } from '../services/u
 import { logoutUser } from '../services/authService';
 import { getToken, clearToken, clearRefreshToken } from '../config/api';
 
-export type AuthModalMode = 'signin' | 'signup';
-
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   signIn: (user: User) => void;
   signOut: () => Promise<void>;
   updateProfile: (updates: { bio: string; phoneNumber: string }) => Promise<void>;
-  showSignInModal: boolean;
-  modalMode: AuthModalMode;
-  openSignInModal: (mode?: AuthModalMode) => void;
-  closeSignInModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [showSignInModal, setShowSignInModal] = useState(false);
-  const [modalMode, setModalMode] = useState<AuthModalMode>('signin');
 
   useEffect(() => {
     // Paint the cached profile immediately, then reconcile with the server.
@@ -74,15 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(result));
   };
 
-  const openSignInModal = (mode: AuthModalMode = 'signin') => {
-    setModalMode(mode);
-    setShowSignInModal(true);
-  };
-
-  const closeSignInModal = () => {
-    setShowSignInModal(false);
-  };
-
   return (
     <AuthContext.Provider value={{
       user,
@@ -90,10 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       updateProfile,
-      showSignInModal,
-      modalMode,
-      openSignInModal,
-      closeSignInModal,
     }}>
       {children}
     </AuthContext.Provider>
