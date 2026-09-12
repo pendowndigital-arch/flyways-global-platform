@@ -5,6 +5,7 @@ import { ArticlesPage } from './pages/ArticlesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthPage } from './pages/AuthPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
   { path: '/login',         element: <AuthPage mode="signin" key="signin" /> },
   { path: '/signup',        element: <AuthPage mode="signup" key="signup" /> },
   { path: '/password/reset/:token', element: <ResetPasswordPage /> },
+  { path: '/user/activate/:token', element: <ActivateAccountPage /> },
   { path: '/contact',       element: <ContactPage /> },
   { path: '/about',         element: <AboutPage /> },
 ]);

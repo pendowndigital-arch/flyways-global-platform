@@ -141,6 +141,19 @@ export async function resetPassword(token: string, password: string): Promise<st
   return body.message || 'Your password has been reset. Please sign in with your new password.';
 }
 
+export async function activateAccount(token: string): Promise<string> {
+  const res = await fetch(ENDPOINTS.activate, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw await toApiError(res);
+
+  let body: { message?: string } = {};
+  try { body = await res.json(); } catch { /* no JSON body */ }
+  return body.message || 'Your account has been activated. Please sign in to continue.';
+}
+
 export async function logoutUser(): Promise<void> {
   const res = await fetch(ENDPOINTS.logout, {
     method: 'POST',

@@ -47,6 +47,7 @@ export const ENDPOINTS = {
   login: `${BASE}/user/login`,
   forgotPassword: `${BASE}/user/password/forgot`,
   resetPassword: `${BASE}/user/password/reset`,
+  activate: `${BASE}/user/activate`,
   logout: `${BASE}/user/logout`,
   me: `${BASE}/user/me`,
   refreshToken: `${ASSETS_BASE}/oauth/token`,
