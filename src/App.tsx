@@ -8,6 +8,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { ContactPage } from './pages/ContactPage';
 import { AboutPage } from './pages/AboutPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { TermsPage } from './pages/TermsPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { RouteError } from './components/RouteError';
 import { RouteLoading } from './components/RouteLoading';
@@ -65,6 +67,8 @@ const router = createBrowserRouter([
   { path: '/user/activate/:token', element: <ActivateAccountPage /> },
   { path: '/contact',       element: <ContactPage /> },
   { path: '/about',         element: <AboutPage /> },
+  { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
+  { path: '/terms-and-conditions', element: <TermsPage /> },
 ]);
 
 function App() {

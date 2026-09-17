@@ -5,7 +5,6 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { registerUser, loginUser, forgotPassword, ApiError } from '../services/authService';
 import { getCurrentUser } from '../services/userService';
-import { LegalModal } from '../components/LegalModal';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -105,7 +104,6 @@ export function AuthPage({ mode }: AuthPageProps) {
 
   const [showForgot, setShowForgot] = useState(false);
   const [step, setStep] = useState(1);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -443,7 +441,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                     </button>
                     <span className="text-xs text-gray-600 leading-relaxed">
                       I agree to the{' '}
-                      <button type="button" onClick={() => setShowPrivacyPolicy(true)} className="text-blue-600 hover:underline font-medium">Privacy Policy</button>
+                      <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Privacy Policy</a>
                       {' '}and consent to processing of my personal information (Email &amp; Phone) in accordance with data protection regulations.
                     </span>
                   </label>
@@ -515,8 +513,6 @@ export function AuthPage({ mode }: AuthPageProps) {
           </div>
         </div>
       </div>
-
-      {showPrivacyPolicy && <LegalModal doc="privacy" onClose={() => setShowPrivacyPolicy(false)} />}
     </Layout>
   );
 }
