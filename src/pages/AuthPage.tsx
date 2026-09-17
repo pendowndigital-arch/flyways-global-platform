@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
 import { User as UserIcon, Mail, Phone, Lock, ChevronRight, Check, Sparkles, ArrowLeft } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -441,7 +441,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                     </button>
                     <span className="text-xs text-gray-600 leading-relaxed">
                       I agree to the{' '}
-                      <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Privacy Policy</a>
+                      <Link to="/privacy-policy" className="text-blue-600 hover:underline font-medium">Privacy Policy</Link>
                       {' '}and consent to processing of my personal information (Email &amp; Phone) in accordance with data protection regulations.
                     </span>
                   </label>
