@@ -15,7 +15,6 @@ export function ContactPage() {
     <Layout>
       <div className="max-w-3xl mx-auto py-12">
         <header className="mb-10">
-          <p className="text-xs font-semibold tracking-widest text-blue-600 uppercase mb-2">Contact Flyways Global</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Humane, Trust-First Communication</h1>
         </header>
 
@@ -73,10 +72,6 @@ export function ContactPage() {
             </div>
           </Section>
         </div>
-
-        <p className="text-center text-xs text-gray-400 mt-12 pt-6 border-t border-gray-100">
-          Flyways Global © 2026 • A Student-First, Research-Driven Overseas Education Platform
-        </p>
       </div>
     </Layout>
   );

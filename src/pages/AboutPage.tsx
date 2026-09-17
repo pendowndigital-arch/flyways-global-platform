@@ -22,7 +22,6 @@ export function AboutPage() {
     <Layout>
       <div className="max-w-3xl mx-auto py-12">
         <header className="mb-10">
-          <p className="text-xs font-semibold tracking-widest text-blue-600 uppercase mb-2">About Flyways Global</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             A Student-First Decision Platform Built on Radical Transparency
           </h1>
@@ -111,10 +110,6 @@ export function AboutPage() {
             </ul>
           </Section>
         </div>
-
-        <p className="text-center text-xs text-gray-400 mt-12 pt-6 border-t border-gray-100">
-          Flyways Global © 2026 • Grounded in Bengaluru, Built for Ambitious Minds Across India
-        </p>
       </div>
     </Layout>
   );
