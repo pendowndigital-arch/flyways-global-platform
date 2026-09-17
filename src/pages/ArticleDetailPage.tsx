@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation, useLoaderData } from 'react-router-dom';
 import { ArrowLeft, Clock, Tag, Link2, Check, Lock } from 'lucide-react';
 import { Layout } from '../components/Layout';
@@ -11,8 +11,6 @@ export function ArticleDetailPage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {

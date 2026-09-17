@@ -51,9 +51,10 @@ export function TopNav() {
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-40 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex-shrink-0 text-lg font-bold text-blue-700 tracking-tight transition-all duration-200 hover:text-indigo-600 hover:drop-shadow-sm">
-            Flyways
+        <div className="flex items-center justify-between h-16 md:h-20">
+          <Link to="/" className="flex-shrink-0 transition-opacity duration-200 hover:opacity-80">
+            <img src="/logo-master.svg" alt="Flyways Global" className="hidden md:block h-16 w-auto" />
+            <img src="/logo-nav.svg" alt="Flyways Global" className="md:hidden h-8 w-auto" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
