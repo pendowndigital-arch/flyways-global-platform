@@ -120,10 +120,6 @@ export function TermsPage() {
             </p>
           </Section>
         </div>
-
-        <p className="text-center text-xs text-gray-400 mt-12 pt-6 border-t border-gray-100">
-          Flyways Global © 2026 • Legal &amp; Operating Terms
-        </p>
       </div>
     </Layout>
   );

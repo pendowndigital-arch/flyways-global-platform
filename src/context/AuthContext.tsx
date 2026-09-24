@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signIn: (user: User) => void;
   signOut: () => Promise<void>;
-  updateProfile: (updates: { bio: string; phoneNumber: string }) => Promise<void>;
+  updateProfile: (updates: { fullName: string; bio: string; phoneNumber: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearRefreshToken();
   };
 
-  const updateProfile = async (updates: { bio: string; phoneNumber: string }) => {
+  const updateProfile = async (updates: { fullName: string; bio: string; phoneNumber: string }) => {
     const result = await updateProfileApi(updates);
     setUser(result);
     localStorage.setItem('user', JSON.stringify(result));

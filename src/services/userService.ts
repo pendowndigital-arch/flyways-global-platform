@@ -38,15 +38,19 @@ export async function getCurrentUser(): Promise<User> {
   return toUser(await res.json());
 }
 
-// Bio and phone number are user-editable from the profile page; every other
-// field is managed elsewhere.
-export async function updateProfile(updates: { bio: string; phoneNumber: string }): Promise<User> {
+// Full name, bio, and phone number are user-editable from the profile page;
+// every other field is managed elsewhere.
+export async function updateProfile(updates: { fullName: string; bio: string; phoneNumber: string }): Promise<User> {
   requireToken();
   await refreshAccessToken();
   const res = await fetch(ENDPOINTS.me, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify({ field_bio: updates.bio, field_phone_number: updates.phoneNumber }),
+    body: JSON.stringify({
+      field_fullname: updates.fullName,
+      field_bio: updates.bio,
+      field_phone_number: updates.phoneNumber,
+    }),
   });
   if (!res.ok) throw await toApiError(res);
   return toUser(await res.json());

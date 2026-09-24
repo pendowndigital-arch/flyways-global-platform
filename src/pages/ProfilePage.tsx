@@ -56,10 +56,12 @@ function ReadField({ label, icon: Icon, value }: {
 export function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [fullNameError, setFullNameError] = useState('');
   const [countryCodeError, setCountryCodeError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -91,11 +93,13 @@ export function ProfilePage() {
     .slice(0, 2);
 
   const handleEdit = () => {
+    setFullName(user.fullName);
     setBio(user.description ?? '');
     const split = splitStoredPhone(user.phoneNumber ?? '');
     setCountryCode(split.countryCode);
     setPhone(split.phone);
     setError('');
+    setFullNameError('');
     setCountryCodeError('');
     setPhoneError('');
     setEditing(true);
@@ -104,14 +108,18 @@ export function ProfilePage() {
   const handleCancel = () => {
     setEditing(false);
     setError('');
+    setFullNameError('');
     setCountryCodeError('');
     setPhoneError('');
   };
 
   const handleUpdate = async () => {
+    const trimmedName = fullName.trim();
     const trimmedCode = countryCode.trim();
     const trimmedPhone = phone.trim();
     let hasError = false;
+    if (!trimmedName) { setFullNameError('Full name is required'); hasError = true; }
+    else setFullNameError('');
     if (!trimmedCode) { setCountryCodeError('Required'); hasError = true; }
     else if (!COUNTRY_CODE_RE.test(trimmedCode)) { setCountryCodeError('Invalid'); hasError = true; }
     else setCountryCodeError('');
@@ -123,7 +131,11 @@ export function ProfilePage() {
     setSaving(true);
     setError('');
     try {
-      await updateProfile({ bio: bio.trim(), phoneNumber: `${trimmedCode.replace(/\D/g, '')}${trimmedPhone}` });
+      await updateProfile({
+        fullName: trimmedName,
+        bio: bio.trim(),
+        phoneNumber: `${trimmedCode.replace(/\D/g, '')}${trimmedPhone}`,
+      });
       setEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
@@ -168,8 +180,24 @@ export function ProfilePage() {
 
             <div className="border-t border-gray-100 pt-6">
               <div className="space-y-5">
-                {/* Full name and email are managed server-side and are always read-only here. */}
-                <ReadField label="Full Name" icon={UserIcon} value={user.fullName} />
+                {/* Email is managed server-side and is always read-only here. */}
+                {!editing ? (
+                  <ReadField label="Full Name" icon={UserIcon} value={user.fullName} />
+                ) : (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">Full Name</p>
+                    <div className="relative">
+                      <UserIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text" value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                        placeholder="Your full name" autoComplete="name"
+                        className={inputCls(fullNameError)}
+                      />
+                    </div>
+                    {fullNameError && <p className="mt-1 text-xs text-red-500">{fullNameError}</p>}
+                  </div>
+                )}
                 <ReadField label="Email ID" icon={Mail} value={user.email} />
 
                 {!editing ? (
