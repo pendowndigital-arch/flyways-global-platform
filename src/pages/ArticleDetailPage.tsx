@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation, useLoaderData } from 'react-router-dom';
-import { ArrowLeft, Clock, Tag, Link2, Check, Lock } from 'lucide-react';
+import { ArrowLeft, Clock, Tag, Link2, Check, Lock, Eye } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { ArticleDetail } from '../models/article';
+import { recordArticleView } from '../services/articlesService';
 
 export function ArticleDetailPage() {
   const article = useLoaderData() as ArticleDetail | null;
@@ -11,6 +12,20 @@ export function ArticleDetailPage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const recordedViewFor = useRef<string | null>(null);
+
+  // Records one view per article load (the ref stops StrictMode's double
+  // effect run from counting twice) and shows the returned view count.
+  const articleId = article?.id;
+  useEffect(() => {
+    setViewCount(null);
+    if (!articleId || !isAuthenticated || recordedViewFor.current === articleId) return;
+    recordedViewFor.current = articleId;
+    recordArticleView(articleId)
+      .then(setViewCount)
+      .catch(() => { /* view count is non-essential; hide it on failure */ });
+  }, [articleId, isAuthenticated]);
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -49,10 +64,20 @@ export function ArticleDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-5">
               {article.title}
             </h1>
-            {article.readTime && (
-              <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                <Clock className="w-4 h-4 text-gray-400" />
-                {article.readTime}
+            {(article.readTime || viewCount !== null) && (
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                {article.readTime && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    {article.readTime}
+                  </span>
+                )}
+                {viewCount !== null && (
+                  <span className="flex items-center gap-1.5">
+                    <Eye className="w-4 h-4 text-gray-400" />
+                    {viewCount.toLocaleString()} {viewCount === 1 ? 'view' : 'views'}
+                  </span>
+                )}
               </div>
             )}
           </header>
